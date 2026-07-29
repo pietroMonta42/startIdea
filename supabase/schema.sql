@@ -9,7 +9,7 @@ create extension if not exists "pgcrypto";
 -- ------------------------------------------------------------
 -- PROFILES (legata a auth.users)
 -- ------------------------------------------------------------
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   full_name text not null,
   avatar_url text,
@@ -44,6 +44,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
@@ -51,7 +52,7 @@ create trigger on_auth_user_created
 -- ------------------------------------------------------------
 -- PROJECTS
 -- ------------------------------------------------------------
-create table public.projects (
+create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles (id) on delete cascade,
   title text not null,
@@ -64,13 +65,13 @@ create table public.projects (
   created_at timestamptz not null default now()
 );
 
-create index projects_created_at_idx on public.projects (created_at desc);
-create index projects_stars_idx on public.projects (stars_count desc);
+create index if not exists projects_created_at_idx on public.projects (created_at desc);
+create index if not exists projects_stars_idx on public.projects (stars_count desc);
 
 -- ------------------------------------------------------------
 -- PROJECT_STARS (PK composita)
 -- ------------------------------------------------------------
-create table public.project_stars (
+create table if not exists public.project_stars (
   project_id uuid not null references public.projects (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
   created_at timestamptz not null default now(),
@@ -92,6 +93,7 @@ begin
 end;
 $$;
 
+drop trigger if exists project_stars_sync on public.project_stars;
 create trigger project_stars_sync
   after insert or delete on public.project_stars
   for each row execute function public.sync_stars_count();
@@ -99,7 +101,7 @@ create trigger project_stars_sync
 -- ------------------------------------------------------------
 -- PROJECT_COMMENTS (social, pubblici in lettura)
 -- ------------------------------------------------------------
-create table public.project_comments (
+create table if not exists public.project_comments (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects (id) on delete cascade,
   author_id uuid not null references public.profiles (id) on delete cascade,
@@ -107,12 +109,12 @@ create table public.project_comments (
   created_at timestamptz not null default now()
 );
 
-create index project_comments_project_idx on public.project_comments (project_id, created_at);
+create index if not exists project_comments_project_idx on public.project_comments (project_id, created_at);
 
 -- ------------------------------------------------------------
 -- APPLICATIONS (private: applicant + owner del progetto)
 -- ------------------------------------------------------------
-create table public.applications (
+create table if not exists public.applications (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects (id) on delete cascade,
   applicant_id uuid not null references public.profiles (id) on delete cascade,
@@ -134,27 +136,43 @@ alter table public.project_comments enable row level security;
 alter table public.applications enable row level security;
 
 -- PROFILES: tutti leggono, modifichi solo il tuo
+drop policy if exists "profiles_select_all" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_select_all" on public.profiles for select using (true);
 create policy "profiles_update_own" on public.profiles for update using (auth.uid() = id);
 create policy "profiles_insert_own" on public.profiles for insert with check (auth.uid() = id);
 
 -- PROJECTS: tutti leggono, CRUD solo owner
+drop policy if exists "projects_select_all" on public.projects;
+drop policy if exists "projects_insert_auth" on public.projects;
+drop policy if exists "projects_update_own" on public.projects;
+drop policy if exists "projects_delete_own" on public.projects;
 create policy "projects_select_all" on public.projects for select using (true);
 create policy "projects_insert_auth" on public.projects for insert with check (auth.uid() = owner_id);
 create policy "projects_update_own" on public.projects for update using (auth.uid() = owner_id);
 create policy "projects_delete_own" on public.projects for delete using (auth.uid() = owner_id);
 
 -- STARS: lettura pubblica, insert/delete solo le proprie (da loggati)
+drop policy if exists "stars_select_all" on public.project_stars;
+drop policy if exists "stars_insert_own" on public.project_stars;
+drop policy if exists "stars_delete_own" on public.project_stars;
 create policy "stars_select_all" on public.project_stars for select using (true);
 create policy "stars_insert_own" on public.project_stars for insert with check (auth.uid() = user_id);
 create policy "stars_delete_own" on public.project_stars for delete using (auth.uid() = user_id);
 
 -- COMMENTS: lettura pubblica, scrivi/elimini solo i tuoi (da loggati)
+drop policy if exists "comments_select_all" on public.project_comments;
+drop policy if exists "comments_insert_auth" on public.project_comments;
+drop policy if exists "comments_delete_own" on public.project_comments;
 create policy "comments_select_all" on public.project_comments for select using (true);
 create policy "comments_insert_auth" on public.project_comments for insert with check (auth.uid() = author_id);
 create policy "comments_delete_own" on public.project_comments for delete using (auth.uid() = author_id);
 
 -- APPLICATIONS: visibili solo ad applicant e owner del progetto
+drop policy if exists "applications_select_involved" on public.applications;
+drop policy if exists "applications_insert_auth" on public.applications;
+drop policy if exists "applications_update_owner" on public.applications;
 create policy "applications_select_involved" on public.applications for select
   using (
     auth.uid() = applicant_id
