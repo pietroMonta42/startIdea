@@ -37,11 +37,11 @@
 }
 
 :root {
-  --bg: #fafafa;
+  --bg: #f3f3f2;
   --surface: #ffffff;
   --ink: #0c0c0d;
-  --muted: #71717a;
-  --line: #ececee;
+  --muted: #6b6b73;
+  --line: #e4e4e7;
 }
 
 .dark {

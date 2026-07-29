@@ -32,7 +32,7 @@ Chi sono i primi utenti? Come cresce?
 Dove siete arrivati? Cosa manca per l'MVP?`;
 
 export default function NuovoPage() {
-  const { user, hydrated, addProject, toast } = useStore();
+  const { user, authReady, addProject, toast } = useStore();
   const router = useRouter();
 
   const [title, setTitle] = useState("");
@@ -44,7 +44,7 @@ export default function NuovoPage() {
   const [readme, setReadme] = useState(README_TEMPLATE);
   const [preview, setPreview] = useState(false);
 
-  if (!hydrated) return <FeedSkeleton />;
+  if (!authReady) return <FeedSkeleton />;
 
   if (!user) {
     return (
@@ -73,13 +73,14 @@ export default function NuovoPage() {
     setRoleInput("");
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (!user) return toast("Accedi per pubblicare");
     if (title.trim().length < 3) return toast("Il titolo è troppo corto");
     if (pitch.trim().length < 10) return toast("Il pitch deve dire qualcosa di concreto");
     if (!location.trim()) return toast("Aggiungi la tua città");
     if (tags.length === 0) return toast("Scegli almeno un tag");
     if (roles.length === 0) return toast("Aggiungi almeno un ruolo che cerchi");
-    const id = addProject({
+    const id = await addProject({
       title: title.trim(),
       short_pitch: pitch.trim(),
       location: location.trim(),
@@ -87,6 +88,7 @@ export default function NuovoPage() {
       open_roles: roles,
       readme_markdown: readme,
     });
+    if (!id) return;
     toast("Idea pubblicata! Benvenuto nel Batch 2026");
     router.push(`/progetto/${id}`);
   };

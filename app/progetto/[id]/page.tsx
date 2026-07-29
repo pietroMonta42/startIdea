@@ -1,28 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, BriefcaseBusiness, Check, FileText, MapPin, Send, Users } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, Check, FileText, MapPin, Pencil, Send, Trash2, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
+import { Project, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
 import { cn, gradientFor, timeAgo } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { StarButton } from "@/components/project-card";
-import { Avatar, Badge, Button, FeedSkeleton, Modal, Textarea } from "@/components/ui";
+import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const store = useStore();
-  const { hydrated, projectById, profileById, commentsFor, addComment, user, toast, applicationsFor, myApplication, addApplication } = store;
+  const { authReady, projectById, profileById, commentsFor, addComment, user, toast, applicationsFor, myApplication, addApplication, isAdmin, deleteProject, updateProject, isDemoProject } = store;
 
   const [comment, setComment] = useState("");
   const [applyOpen, setApplyOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  if (!hydrated) return <FeedSkeleton />;
+  if (!authReady) return <FeedSkeleton />;
 
   const project = projectById(id);
   if (!project) {
@@ -64,6 +66,12 @@ export default function ProjectPage() {
       <Link href="/" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-muted transition-colors hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> Indietro
       </Link>
+
+      {isDemoProject(project.id) && (
+        <div className="rounded-2xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm font-semibold text-brand-600 dark:text-brand-400">
+          ⭐ Progetto dimostrativo — publica il tuo da /nuovo per renderlo modificabile e candidabile.
+        </div>
+      )}
 
       {/* Hero */}
       <motion.section
@@ -115,7 +123,16 @@ export default function ProjectPage() {
         </div>
         <div className="mt-4">
           {isOwner ? (
-            <p className="text-sm text-muted">Sei il founder di questo progetto.</p>
+            <div className="flex flex-wrap gap-2">
+              <p className="w-full text-sm text-muted">Sei il founder di questo progetto.</p>
+              <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil className="h-3.5 w-3.5" /> Modifica</Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} className="text-red-500 hover:bg-red-500/10"><Trash2 className="h-3.5 w-3.5" /> Elimina</Button>
+            </div>
+          ) : isAdmin && !isDemoProject(project.id) ? (
+            <div className="flex flex-wrap gap-2">
+              <p className="w-full text-sm text-muted">Moderazione admin.</p>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} className="text-red-500 hover:bg-red-500/10"><Trash2 className="h-3.5 w-3.5" /> Elimina (admin)</Button>
+            </div>
           ) : mine ? (
             <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
               <Check className="h-4.5 w-4.5" /> Ti sei candidato come {mine.target_role} · in attesa di risposta
@@ -296,6 +313,77 @@ export default function ProjectPage() {
           Invia candidatura
         </Button>
       </Modal>
+
+      {/* Edit modal */}
+      <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={project} onSave={updateProject} />
+
+      {/* Delete confirm */}
+      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Elimina progetto?">
+        <p className="text-sm text-muted">Questa azione è irreversibile: il progetto, i suoi commenti e le candidature verranno rimossi.</p>
+        <div className="mt-4 flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => setConfirmDelete(false)}>Annulla</Button>
+          <Button variant="dark" className="flex-1 bg-red-500 hover:bg-red-600" onClick={async () => { await deleteProject(project.id); setConfirmDelete(false); location.href = "/"; }}>Elimina</Button>
+        </div>
+      </Modal>
     </div>
+  );
+}
+
+function EditProjectModal({
+  open,
+  onClose,
+  project,
+  onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  project: Project;
+  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location">>) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(project.title);
+  const [pitch, setPitch] = useState(project.short_pitch);
+  const [location, setLocation] = useState(project.location);
+  const [readme, setReadme] = useState(project.readme_markdown);
+  const [roles, setRoles] = useState(project.open_roles.join(", "));
+  const [tags, setTags] = useState(project.tags.join(", "));
+
+  useEffect(() => {
+    if (open) {
+      setTitle(project.title);
+      setPitch(project.short_pitch);
+      setLocation(project.location);
+      setReadme(project.readme_markdown);
+      setRoles(project.open_roles.join(", "));
+      setTags(project.tags.join(", "));
+    }
+  }, [open, project]);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Modifica progetto">
+      <div className="flex flex-col gap-3">
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" />
+        <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Pitch (max 140)" />
+        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
+        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (separati da virgola)" />
+        <Input value={roles} onChange={(e) => setRoles(e.target.value)} placeholder="Ruoli aperti (separati da virgola)" />
+        <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="README (markdown)" className="font-mono text-[13px]" />
+        <Button
+          size="lg"
+          onClick={async () => {
+            await onSave(project.id, {
+              title: title.trim() || project.title,
+              short_pitch: pitch.trim(),
+              location: location.trim(),
+              tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+              open_roles: roles.split(",").map((r) => r.trim()).filter(Boolean),
+              readme_markdown: readme,
+            });
+            onClose();
+          }}
+        >
+          Salva modifiche
+        </Button>
+      </div>
+    </Modal>
   );
 }

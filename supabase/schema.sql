@@ -18,8 +18,13 @@ create table public.profiles (
   bio text,
   availability text not null default 'available' check (availability in ('available', 'busy', 'consulting')),
   university text,
+  is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Aggiunge la colonna anche se la tabella esiste già (idempotente)
+alter table public.profiles add column if not exists is_admin boolean not null default false;
+alter table public.profiles add column if not exists university text;
 
 -- Crea automaticamente il profilo alla registrazione
 create or replace function public.handle_new_user()
@@ -27,12 +32,14 @@ returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, role_badge)
+  insert into public.profiles (id, full_name, role_badge, university)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'full_name', 'Nuovo utente'),
-    coalesce(new.raw_user_meta_data ->> 'role_badge', 'tech_dev')
-  );
+    coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data ->> 'role_badge', 'tech_dev'),
+    new.raw_user_meta_data ->> 'university'
+  )
+  on conflict (id) do nothing;
   return new;
 end;
 $$;
@@ -157,3 +164,38 @@ create policy "applications_insert_auth" on public.applications for insert
   with check (auth.uid() = applicant_id);
 create policy "applications_update_owner" on public.applications for update
   using (auth.uid() = (select owner_id from public.projects where id = project_id));
+
+-- ============================================================
+-- ADMIN (ruolo is_admin sui profiles) — GDPR / privacy
+-- Un admin può gestire (modificare/eliminare) qualsiasi progetto e profilo.
+-- Per rendere un utente admin, esegui nel SQL Editor:
+--   update public.profiles set is_admin = true where id = (
+--     select id from auth.users where email = 'tuo@email.com'
+--   );
+-- ============================================================
+
+create or replace function public.is_admin(uid uuid)
+returns boolean
+language sql security definer set search_path = public
+as $$
+  select coalesce((select is_admin from public.profiles where id = uid), false);
+$$;
+
+-- Profili: admin può leggere/modificare/eliminare qualsiasi profilo
+drop policy if exists "profiles_admin_update" on public.profiles;
+create policy "profiles_admin_update" on public.profiles for update
+  using (public.is_admin(auth.uid()));
+
+drop policy if exists "profiles_admin_delete" on public.profiles;
+create policy "profiles_admin_delete" on public.profiles for delete
+  using (public.is_admin(auth.uid()));
+
+-- Progetti: admin può eliminare qualsiasi progetto
+drop policy if exists "projects_admin_delete" on public.projects;
+create policy "projects_admin_delete" on public.projects for delete
+  using (public.is_admin(auth.uid()));
+
+-- Commenti: admin può eliminare qualsiasi commento (moderazione)
+drop policy if exists "comments_admin_delete" on public.project_comments;
+create policy "comments_admin_delete" on public.project_comments for delete
+  using (public.is_admin(auth.uid()));

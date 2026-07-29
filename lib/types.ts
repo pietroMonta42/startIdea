@@ -10,6 +10,7 @@ export interface Profile {
   bio: string | null;
   availability: Availability;
   university?: string;
+  is_admin?: boolean;
   created_at: string;
 }
 
