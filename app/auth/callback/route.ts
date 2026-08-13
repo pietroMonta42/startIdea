@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const origin = requestUrl.origin;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const key = process.env.NEXT_PUBLIC_SUPABASE_KEY ?? "";
 
   if (code && url && key) {
     const cookieStore = await cookies();
