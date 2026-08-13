@@ -54,7 +54,14 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 
-const DEMO_PROFILES_MAP = new Map(SEED_PROFILES.map((p) => [p.id, p]));
+// Demo mode: seed projects visible in dev, hidden in prod.
+// Enable explicitly with NEXT_PUBLIC_DEMO_MODE="true", disable with "false".
+// Default: enabled when Supabase is NOT configured, disabled when it is.
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE !== "false" && process.env.NEXT_PUBLIC_DEMO_MODE !== "0";
+const SHOW_SEED = DEMO_MODE || !isSupabaseConfigured;
+
+const SEED_PROJECTS_VISIBLE = SHOW_SEED ? SEED_PROJECTS : [];
+const DEMO_PROFILES_MAP = new Map((SHOW_SEED ? SEED_PROFILES : []).map((p) => [p.id, p]));
 
 function profileFromRow(row: Record<string, unknown>): Profile {
   return {
@@ -101,7 +108,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [localStarIds, setLocalStarIds] = useState<string[]>([]);
   const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
 
-  const projects = useMemo<Project[]>(() => [...SEED_PROJECTS, ...dbProjects], [dbProjects]);
+  const projects = useMemo<Project[]>(() => [...SEED_PROJECTS_VISIBLE, ...dbProjects], [dbProjects]);
   const isDemoProject = useCallback((id: string) => id.startsWith("pr-") && !dbProjects.some((p) => p.id === id), [dbProjects]);
 
   const toast = useCallback((msg: string) => {
@@ -360,7 +367,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [isDemoProject, localStarIds]);
 
   const commentsFor = useCallback((id: string) => {
-    if (isDemoProject(id)) return SEED_COMMENTS.filter((c) => c.project_id === id).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+    if (isDemoProject(id)) return (SHOW_SEED ? SEED_COMMENTS : []).filter((c) => c.project_id === id).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
     return comments.filter((c) => c.project_id === id).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
   }, [comments, isDemoProject]);
 
