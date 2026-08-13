@@ -1,6 +1,6 @@
-/* startIdea service worker — offline-first leggero */
-const CACHE = "startidea-v1";
-const PRECACHE = ["/", "/esplora", "/profilo", "/manifest.webmanifest", "/icon.svg"];
+/* SparkLab service worker — offline-first leggero */
+const CACHE = "sparklab-v1";
+const PRECACHE = ["/", "/esplora", "/profilo", "/manifest.webmanifest", "/icon"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));

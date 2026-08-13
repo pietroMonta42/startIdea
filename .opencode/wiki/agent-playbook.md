@@ -24,6 +24,7 @@ Conventions and decision trees for editing this codebase safely.
 | Change seed/project demo data | `lib/data.ts` | Also update `Store` interface if adding fields |
 | Fix a type error | `lib/types.ts` then `lib/store.tsx` row mappers | Types cascade to all components |
 | Change visual theme (colors, fonts) | `app/globals.css` | CSS vars (`--bg`, `--surface`, `--ink`, `--muted`, `--line`) + Tailwind `@theme` tokens |
+| Add a gradient hero/banner | `lib/utils.ts` → `gradientStyle()` + `scrimStyle()` | **Never use Tailwind `from-*-600` gradient classes — see caveat below** |
 
 ## Decision trees
 
@@ -50,6 +51,17 @@ Conventions and decision trees for editing this codebase safely.
 - **Never** put raw SQL mutation in `lib/store.tsx` — use `supabase.from().insert/update/delete`
 - **Never** hardcode demo data IDs — they're prefixed `pr-` and checked by `isDemoProject()`
 - **Never** assume Supabase is configured — check `isSupabaseConfigured` before network calls; demo mode always works
+
+## Tailwind v4 gradient caveat
+
+Tailwind v4 only emits CSS color variables (`--color-orange-600`, etc.) for tokens **actually referenced**. Gradient utility classes like `from-orange-600 via-rose-600 to-pink-600` reference `var(--color-orange-600)` which is **not emitted** unless used elsewhere → the gradient silently collapses to transparent (card hero shows page background, dark/light, instead of the project color).
+
+**Always use inline style for gradients**:
+- `style={gradientStyle(project, { dots: true })}` — hex gradient + optional dot overlay
+- `style={scrimStyle()}` — dark-to-transparent scrim behind hero title (use on every gradient hero for white-text legibility)
+- `gradientStyle(name)` for avatars / deterministic non-project gradients
+
+Only **brand** tokens (`brand-400` → `brand-700`) are reliably emitted because they're defined in `@theme`. The FAB "+" can use `from-brand-400 to-brand-600` safely. Do not use other palette stops (`-500`, `-600`) as Tailwind gradient classes anywhere.
 
 ## TypeScript path aliases
 

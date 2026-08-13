@@ -1,5 +1,5 @@
 -- ============================================================
--- startIdea — Schema Supabase (PostgreSQL) + RLS Policies
+-- SparkLab — Schema Supabase (PostgreSQL) + RLS Policies
 -- Esegui nel SQL Editor di Supabase dopo aver creato il progetto.
 -- ============================================================
 
@@ -61,6 +61,7 @@ create table if not exists public.projects (
   open_roles text[] not null default '{}',
   tags text[] not null default '{}',
   location text not null default '',
+  theme integer not null default 0,
   stars_count integer not null default 0,
   created_at timestamptz not null default now()
 );

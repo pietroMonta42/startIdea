@@ -3,7 +3,7 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { cn, gradientFor, initials } from "@/lib/utils";
+import { cn, gradientStyle, initials } from "@/lib/utils";
 
 /* ---------- Button ---------- */
 export function Button({
@@ -76,11 +76,11 @@ export function Avatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 select-none items-center justify-center bg-gradient-to-br font-display font-bold text-white shadow-sm",
-        gradientFor(name),
+        "flex shrink-0 select-none items-center justify-center font-display font-bold text-white shadow-sm",
         sizes[size],
         className
       )}
+      style={gradientStyle(name)}
     >
       {initials(name)}
     </div>

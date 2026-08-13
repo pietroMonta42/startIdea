@@ -44,3 +44,6 @@ next-env.d.ts
 # temporanei
 ricerca_case_milano.html
 scrape_case.py
+
+# dev assets (local source files)
+/dev_source

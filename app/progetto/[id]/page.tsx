@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, BriefcaseBusiness, Check, FileText, MapPin, Pencil, Send, Trash2, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Project, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
-import { cn, gradientFor, timeAgo } from "@/lib/utils";
+import { cn, gradientStyle, scrimStyle, timeAgo } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { StarButton } from "@/components/project-card";
 import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
@@ -77,10 +77,12 @@ export default function ProjectPage() {
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={cn("dot-grid relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 sm:p-10", gradientFor(project.id))}
+        className="dot-grid relative overflow-hidden rounded-3xl p-6 sm:p-10"
+        style={gradientStyle(project, { dots: true })}
       >
-        <span className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-        <span className="pointer-events-none absolute -bottom-14 -left-8 h-52 w-52 rounded-full bg-black/10 blur-2xl" />
+        <span className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full blur-2xl" style={{ backgroundColor: "rgba(255,255,255,0.15)" }} />
+        <span className="pointer-events-none absolute -bottom-14 -left-8 h-52 w-52 rounded-full blur-2xl" style={{ backgroundColor: "rgba(0,0,0,0.12)" }} />
+        <span className="pointer-events-none absolute inset-0" style={scrimStyle()} />
 
         <div className="relative flex flex-wrap items-center gap-2">
           {project.tags.map((t) => (

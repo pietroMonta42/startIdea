@@ -52,7 +52,7 @@ lib/store.tsx (AppProvider → useStore)
 | `authReady` | boolean | Use as loading guard for auth-dependent pages |
 | `user` | Profile \| null | Current user's DB profile row |
 | `isAdmin` | boolean | From profiles.is_admin column |
-| `projects` | Project[] | Merged: demo + DB |
+| `projects` | Project[] | Merged: demo + DB (each row carries optional `theme` int → `gradientStyle(project)`) |
 | `profileById(id)` | Profile \| undefined | Searches DB first, then demo map |
 | `projectById(id)` | Project \| undefined | Searches merged list |
 | `hasStarred(id)` | boolean | Checks DB stars + local ephemeral |
@@ -64,7 +64,7 @@ lib/store.tsx (AppProvider → useStore)
 
 | Action | Signature | Guard |
 |--------|-----------|-------|
-| `addProject(p)` | → Promise<string \| null> | Auth required |
+| `addProject(p)` | → Promise<string \| null> | Auth required; passes `theme` int to DB |
 | `updateProject(id, patch)` | → Promise<void> | RLS: owner or admin |
 | `deleteProject(id)` | → Promise<void> | RLS: owner or admin |
 | `toggleStar(id)` | void | Auth for DB projects, local for demo |
@@ -75,6 +75,10 @@ lib/store.tsx (AppProvider → useStore)
 | `signInOtp(email, meta)` | → Promise<void> | — |
 | `signOut()` | → Promise<void> | — |
 | `deleteProfileAdmin(id)` | → Promise<void> | RLS: admin only |
+
+## Project theme + style
+
+The merged `projects` array rows map `theme` from the DB `projects.theme` column (default 0). Projects table in `supabase/schema.sql` has `theme integer not null default 0`. `PROJECT_STYLES` in `lib/utils.ts` indexes the style (Tramonto, Fusione, Abisso, Foresta, Magma, Nebula). `gradientStyle(project)` falls back to a deterministic gradient from `project.id` when `theme` is unset (seed projects).
 
 ## Supabase guard
 

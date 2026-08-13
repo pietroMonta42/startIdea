@@ -2,7 +2,7 @@
 okf_version: "0.1"
 ---
 
-# startIdea — Agent Wiki Index
+# SparkLab — Agent Wiki Index
 
 High-level navigation map for AI agents.
 **Goal:** find the right area quickly; avoid deep repo crawls.
@@ -27,7 +27,7 @@ High-level navigation map for AI agents.
 
 | Layer | Primary pages |
 |-------|---------------|
-| Frontend (Next.js App Router) | `app/` pages, `components/` |
+| Frontend (Next.js App Router) | `app/` pages: `/` landing (redirect→`/esplora` if logged in), `/esplora` feed, `/nuovo`, `/profilo`, `/progetto/[id]` |
 | State & data | `lib/store.tsx`, `lib/data.ts`, `lib/supabase/` |
 | Styling | Tailwind v4 in `app/globals.css` |
 | Auth & backend | `lib/supabase/`, `proxy.ts`, `supabase/schema.sql` |
@@ -42,7 +42,7 @@ High-level navigation map for AI agents.
 | CSS | Tailwind CSS v4 (`@theme` tokens in globals.css) |
 | Animations | Framer Motion (card entrance, star burst, page transitions) |
 | UI Language | Italian (UI, seed data, time-ago strings) |
-| Brand | `#f97316` orange primary, Space Grotesk display + Inter body |
+| Brand | `#f97316` orange primary, **amber-400** for stars, Space Grotesk display + Inter body |
 | Auth | Supabase SSR: OAuth (GitHub/Google) + Magic Link email |
 | DB | PostgreSQL via Supabase + RLS policies |
 | Hosting | Vercel |

@@ -23,6 +23,10 @@
   --color-brand-600: #ea580c;
   --color-brand-700: #c2410c;
 
+  --color-info-400: #38bdf8;
+  --color-info-500: #0ea5e9;
+  --color-info-600: #0284c7;
+
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-float: float 7s ease-in-out infinite;
 
@@ -37,11 +41,11 @@
 }
 
 :root {
-  --bg: #f3f3f2;
+  --bg: #e3dfd6;
   --surface: #ffffff;
   --ink: #0c0c0d;
-  --muted: #6b6b73;
-  --line: #e4e4e7;
+  --muted: #5d5d65;
+  --line: #d6d1c6;
 }
 
 .dark {
@@ -79,6 +83,6 @@ body {
 }
 
 .dot-grid {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px);
   background-size: 18px 18px;
 }

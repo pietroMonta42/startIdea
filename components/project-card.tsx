@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { MapPin, MessageCircle, Star } from "lucide-react";
 import { Project } from "@/lib/types";
 import { useStore } from "@/lib/store";
-import { cn, gradientFor, initials, timeAgo } from "@/lib/utils";
+import { cn, gradientStyle, scrimStyle, initials, timeAgo } from "@/lib/utils";
 import { Badge } from "./ui";
 
 export function StarButton({
@@ -39,7 +39,7 @@ export function StarButton({
         size === "md" && "px-3 py-1.5 text-sm",
         size === "lg" && "px-4 py-2 text-base",
         starred
-          ? "bg-brand-500/15 text-brand-600 dark:text-brand-400"
+          ? "bg-amber-400/15 text-amber-600 dark:text-amber-400"
           : onDark
             ? "bg-white/15 text-white hover:bg-white/25"
             : "bg-line/70 text-muted hover:text-ink",
@@ -53,7 +53,7 @@ export function StarButton({
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: "spring", damping: 10, stiffness: 400 }}
       >
-        <Star className={cn(size === "md" ? "h-4 w-4" : "h-5 w-5", starred && "fill-brand-500 text-brand-500")} />
+        <Star className={cn(size === "md" ? "h-4 w-4" : "h-5 w-5", starred && "fill-amber-400 text-amber-400")} />
       </motion.span>
       {starCount(project)}
     </motion.button>
@@ -75,10 +75,8 @@ export default function ProjectCard({ project, index = 0 }: { project: Project; 
       {/* Header */}
       <div className="flex items-center gap-3 p-4 pb-3">
         <div
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br font-display text-base font-bold text-white",
-            gradientFor(project.id)
-          )}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-display text-base font-bold text-white"
+          style={gradientStyle(project)}
         >
           {initials(project.title).slice(0, 1)}
         </div>
@@ -101,14 +99,13 @@ export default function ProjectCard({ project, index = 0 }: { project: Project; 
       {/* Hero */}
       <Link href={`/progetto/${project.id}`} className="block" aria-label={`Apri ${project.title}`}>
         <div
-          className={cn(
-            "dot-grid relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-gradient-to-br",
-            gradientFor(project.id)
-          )}
+          className="relative flex aspect-[16/9] items-center justify-center overflow-hidden"
+          style={gradientStyle(project, { dots: true })}
         >
-          <span className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
-          <span className="pointer-events-none absolute -bottom-10 -left-6 h-40 w-40 rounded-full bg-black/10 blur-2xl" />
-          <h2 className="relative px-6 text-center font-display text-4xl font-bold tracking-tight text-white drop-shadow-sm transition-transform duration-500 group-hover:scale-[1.04] sm:text-5xl">
+          <span className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full blur-2xl" style={{ backgroundColor: "rgba(255,255,255,0.18)" }} />
+          <span className="pointer-events-none absolute -bottom-10 -left-6 h-40 w-40 rounded-full blur-2xl" style={{ backgroundColor: "rgba(0,0,0,0.12)" }} />
+          <span className="pointer-events-none absolute inset-0" style={scrimStyle()} />
+          <h2 className="relative px-6 text-center font-display text-4xl font-bold tracking-tight text-white drop-shadow-md transition-transform duration-500 group-hover:scale-[1.04] sm:text-5xl">
             {project.title}
           </h2>
         </div>

@@ -1,4 +1,4 @@
-Piano Tecnico MVP: startIdea — Piattaforma Co-founding
+Piano Tecnico MVP: SparkLab — Piattaforma Co-founding
 
 1. Architettura e Stack Tecnologico
 
@@ -12,7 +12,7 @@ Hosting: Vercel
 
 2. Brand & UI/UX
 
-Nome: startIdea
+Nome: SparkLab
 
 Target: Studenti universitari, aspiranti startupper, mix di talenti tecnici e di business.
 

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import clsx, { type ClassValue } from "clsx";
 
 export function cn(...inputs: ClassValue[]) {
@@ -18,23 +19,66 @@ export function timeAgo(iso: string): string {
   return `${Math.floor(d / 30)} mesi fa`;
 }
 
-export const GRADIENTS = [
-  "from-orange-400 via-amber-400 to-yellow-300",
-  "from-orange-500 via-rose-500 to-pink-500",
-  "from-violet-500 via-purple-500 to-fuchsia-400",
-  "from-sky-500 via-cyan-400 to-teal-300",
-  "from-emerald-500 via-teal-400 to-lime-300",
-  "from-rose-500 via-red-400 to-orange-300",
-  "from-indigo-500 via-blue-400 to-sky-300",
-  "from-amber-500 via-orange-400 to-rose-400",
-  "from-fuchsia-500 via-pink-400 to-rose-300",
-  "from-teal-500 via-emerald-400 to-green-300",
+const GRADIENT_COLORS: [string, string, string][] = [
+  ["#c2410c", "#d97706", "#ca8a04"],
+  ["#c2410c", "#e11d48", "#db2777"],
+  ["#7c3aed", "#9333ea", "#c026d3"],
+  ["#0369a1", "#0891b2", "#0d9488"],
+  ["#059669", "#0d9488", "#65a30d"],
+  ["#e11d48", "#dc2626", "#c2410c"],
+  ["#4f46e5", "#2563eb", "#0369a1"],
+  ["#d97706", "#c2410c", "#e11d48"],
+  ["#c026d3", "#db2777", "#e11d48"],
+  ["#0d9488", "#059669", "#16a34a"],
 ];
 
-export function gradientFor(id: string): string {
+export const PROJECT_STYLES: { label: string; from: string; via: string; to: string }[] = [
+  { label: "Tramonto", from: "#c2410c", via: "#e11d48", to: "#db2777" },
+  { label: "Fusione", from: "#7c3aed", via: "#9333ea", to: "#c026d3" },
+  { label: "Abisso", from: "#075985", via: "#1d4ed8", to: "#4338ca" },
+  { label: "Foresta", from: "#059669", via: "#0d9488", to: "#0891b2" },
+  { label: "Magma", from: "#dc2626", via: "#c2410c", to: "#d97706" },
+  { label: "Nebula", from: "#c026d3", via: "#e11d48", to: "#9333ea" },
+];
+
+function hashIndex(seed: string, len: number): number {
   let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return GRADIENTS[h % GRADIENTS.length];
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h % len;
+}
+
+function colorsFor(seed: string | { id: string; theme?: number }): [string, string, string] {
+  if (typeof seed === "object" && seed) {
+    const t = seed.theme;
+    if (t != null && t >= 0 && t < PROJECT_STYLES.length) {
+      const s = PROJECT_STYLES[t];
+      return [s.from, s.via, s.to];
+    }
+    return GRADIENT_COLORS[hashIndex(seed.id, GRADIENT_COLORS.length)];
+  }
+  return GRADIENT_COLORS[hashIndex(seed, GRADIENT_COLORS.length)];
+}
+
+export function gradientStyle(
+  seed: string | { id: string; theme?: number },
+  opts?: { dots?: boolean }
+): CSSProperties {
+  const [from, via, to] = colorsFor(seed);
+  const linear = `linear-gradient(to bottom right, ${from}, ${via}, ${to})`;
+  if (opts?.dots) {
+    return {
+      backgroundImage: `radial-gradient(rgba(255,255,255,0.22) 1px, transparent 1px), ${linear}`,
+      backgroundSize: "18px 18px, auto",
+      backgroundPosition: "0 0, 0 0",
+    };
+  }
+  return { backgroundImage: linear };
+}
+
+export function scrimStyle(): CSSProperties {
+  return {
+    backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.42), rgba(0,0,0,0.08) 55%, transparent)",
+  };
 }
 
 export function initials(name: string): string {

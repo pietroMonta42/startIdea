@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ThemeProvider, useTheme } from "next-themes";
 import { motion } from "framer-motion";
@@ -13,14 +14,17 @@ import { Avatar } from "./ui";
 export function Logo({ size = 36 }: { size?: number }) {
   return (
     <div
-      className="flex items-center justify-center rounded-[28%] bg-gradient-to-br from-brand-400 to-brand-600 text-white shadow-lg shadow-brand-500/30"
-      style={{ width: size, height: size }}
+      className="flex items-center justify-center overflow-hidden rounded-[28%] shadow-lg shadow-brand-500/30"
+      style={{ width: size, height: size, background: "var(--surface)" }}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ width: size * 0.58, height: size * 0.58 }}>
-        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
-        <path d="M9 18h6" />
-        <path d="M10 22h4" />
-      </svg>
+      <Image
+        src="/sparklab-logo.svg"
+        alt="SparkLab"
+        width={size}
+        height={size}
+        priority
+        className="h-full w-full object-cover"
+      />
     </div>
   );
 }
@@ -57,7 +61,7 @@ function SideNav() {
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-surface px-5 py-6 lg:flex">
       <Link href="/" className="flex items-center gap-3 px-1">
         <Logo size={38} />
-        <span className="font-display text-xl font-bold tracking-tight text-ink">startIdea</span>
+        <span className="font-display text-xl font-bold tracking-tight text-ink">SparkLab</span>
       </Link>
 
       <nav className="mt-10 flex flex-col gap-1">
@@ -119,7 +123,7 @@ function MobileHeader() {
     <header className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-bg/80 px-4 py-3 backdrop-blur-xl lg:hidden">
       <Link href="/" className="flex items-center gap-2.5">
         <Logo size={32} />
-        <span className="font-display text-lg font-bold tracking-tight text-ink">startIdea</span>
+        <span className="font-display text-lg font-bold tracking-tight text-ink">SparkLab</span>
       </Link>
       <ThemeToggle />
     </header>

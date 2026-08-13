@@ -16,14 +16,16 @@ Top-level folder map. For deep-dive on specific areas, see layer and domain page
 |---------------|------------|
 | `app/layout.tsx` | Root layout: fonts (Inter, Space Grotesk), metadata, viewport, providers |
 | `app/globals.css` | Tailwind v4: `@theme` tokens, CSS vars (bg, surface, ink, muted, line), dark mode via `.dark` class |
-| `app/page.tsx` | **Home feed**: search bar, tag chips, sort toggle, project card grid |
-| `app/esplora/page.tsx` | **Leaderboard**: podium (top 3), weekly/all-time toggle, ranked list |
-| `app/nuovo/page.tsx` | **New project form**: title, pitch (140), tags, roles, markdown README with live preview |
+| `app/page.tsx` | **Landing / mission page**: logo, hero, "Come funziona" steps, "La direzione" values, live community stats + "In evidenza" (top 3). Client-redirects logged-in users → `/esplora` |
+| `app/esplora/page.tsx` | **Feed**: search, tag chips, 3-way sort (Stelle · Commenti · Recenti), `ProjectCard` list |
+| `app/nuovo/page.tsx` | **New project form**: title, pitch (140), tags, roles, **style picker** (`PROJECT_STYLES`, saves `theme` int), markdown README with live preview |
 | `app/profilo/page.tsx` | **Profile / Login**: auth screen (GitHub, Google, Magic Link) or logged-in proof-of-work + admin panel |
 | `app/progetto/[id]/page.tsx` | **Project detail**: gradient hero, open roles, apply modal, README, comments, owner edit/delete |
 | `app/auth/callback/route.ts` | OAuth/Magic Link callback: exchanges code for Supabase session |
 | `app/manifest.ts` | PWA manifest (standalone, orange theme, SVG icon) |
-| `app/icon.svg` | App icon |
+| `app/icon.png`, `app/apple-icon.png`, `app/opengraph-image.png` | Next.js file-convention icons (auto metadata) — generated from logo SVG |
+| `public/sparklab-logo.svg` | SparkLab mark (used by `Logo` component via next/image) |
+| `public/icon-512-maskable.png` | PWA maskable icon (referenced by manifest) |
 
 ## `components/` — Shared UI
 
@@ -41,7 +43,7 @@ Top-level folder map. For deep-dive on specific areas, see layer and domain page
 | `lib/types.ts` | TypeScript types: `Profile`, `Project`, `ProjectComment`, `Application`, enums, label/color maps |
 | `lib/store.tsx` | **Global state** (React Context): session, user, projects (seed + DB), comments, applications, stars. Auth via Supabase. All CRUD actions. Toast notifications. Fallback demo-mode when no Supabase env. |
 | `lib/data.ts` | Seed data: 7 Italian student profiles + 9 demo projects (ThesisAI, MensaGo, StudySwap, …) + 6 seed comments |
-| `lib/utils.ts` | Utilities: `cn()` (clsx), `timeAgo()` (Italian relative time), `gradientFor()` (deterministic card gradients), `initials()`, `uid()` |
+| `lib/utils.ts` | Utilities: `cn()`, `timeAgo()`, `gradientStyle()` (inline hex gradients — see agent-playbook caveat), `scrimStyle()`, `PROJECT_STYLES`, `initials()`, `uid()` |
 | `lib/supabase/client.ts` | Browser Supabase client singleton |
 
 ## `supabase/`

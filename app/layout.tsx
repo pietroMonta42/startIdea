@@ -9,14 +9,14 @@ const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: 
 
 export const metadata: Metadata = {
   title: {
-    default: "startIdea — Il punto di gravità dell'innovazione italiana",
-    template: "%s · startIdea",
+    default: "SparkLab — Il punto di gravità dell'innovazione italiana",
+    template: "%s · SparkLab",
   },
   description:
     "La community dove studenti con idee incontrano studenti con competenze. Pubblica la tua startup, raccogli stelle, trova il tuo co-founder.",
   appleWebApp: {
     capable: true,
-    title: "startIdea",
+    title: "SparkLab",
     statusBarStyle: "default",
   },
 };

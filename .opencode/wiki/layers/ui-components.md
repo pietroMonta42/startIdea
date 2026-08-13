@@ -18,7 +18,7 @@ Shared UI primitives. Everything lives in `components/ui.tsx`. No shadcn — han
 |-----------|-------|-------|
 | `Button` | `variant` ("primary" \| "secondary" \| "ghost" \| "dark"), `size` ("sm" \| "md" \| "lg"), all `<button>` attrs | Tap-animated button with 4 style variants |
 | `Badge` | `children`, `className` | Small rounded pill (11px, bold, tracking-wide) |
-| `Avatar` | `name: string`, `size` ("sm" \| "md" \| "lg" \| "xl") | Gradient background + initials derived from name |
+| `Avatar` | `name: string`, `size` ("sm" \| "md" \| "lg" \| "xl") | Inline gradient (via `gradientStyle(name)`) + initials derived from name |
 | `Modal` | `open`, `onClose`, `title`, `children` | Bottom-sheet on mobile (`rounded-t-3xl`), centered dialog on desktop. Backdrop with blur. Spring animation via Framer Motion AnimatePresence |
 | `Input` | All `<input>` attrs | `h-11`, rounded-2xl, border-line, focus:brand-500 ring |
 | `Textarea` | All `<textarea>` attrs | Same styling as Input, `py-3` |
@@ -34,7 +34,16 @@ All primitives use CSS vars defined in `app/globals.css`:
 - `--muted` → `text-muted` — secondary text
 - `--bg` → `bg-bg` — page background
 
-Brand colors via Tailwind `@theme` tokens: `brand-50` through `brand-700` (orange `#f97316` based).
+Brand colors via Tailwind `@theme` tokens: `brand-50` through `brand-700` (orange `#f97316` based). Info accent: `--color-info-400/500/600` (sky) defined but currently unused as accent.
+
+## Color conventions
+
+| Element | Color |
+|---------|-------|
+| Stars (active, count icons) | `amber-400` (`#fcbb00`) — visible in light + dark |
+| Active toggles (sort, tags, tabs, availability) | `bg-brand-500 text-white` (both themes; no zinc-900) |
+| Hero gradient on cards/project detail | inline `gradientStyle(project)` (hex) + `scrimStyle()` behind title |
+| Logo / FAB "+" | brand-400 → brand-600 (Tailwind classes — these tokens ARE emitted) |
 
 ## Button variants
 

@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Lightbulb, MapPin, Plus, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ALL_TAGS } from "@/lib/data";
-import { cn } from "@/lib/utils";
+import { cn, gradientStyle, PROJECT_STYLES } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { Badge, Button, FeedSkeleton, Input, Textarea } from "@/components/ui";
 
@@ -43,6 +43,7 @@ export default function NuovoPage() {
   const [roleInput, setRoleInput] = useState("");
   const [readme, setReadme] = useState(README_TEMPLATE);
   const [preview, setPreview] = useState(false);
+  const [theme, setTheme] = useState(0);
 
   if (!authReady) return <FeedSkeleton />;
 
@@ -87,6 +88,7 @@ export default function NuovoPage() {
       tags,
       open_roles: roles,
       readme_markdown: readme,
+      theme,
     });
     if (!id) return;
     toast("Idea pubblicata! Benvenuto nel Batch 2026");
@@ -137,6 +139,27 @@ export default function NuovoPage() {
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Es. Bologna" className="pl-10" maxLength={30} />
           </div>
         </label>
+
+        {/* Stile visuale */}
+        <div>
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Stile dell&apos;idea</span>
+          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+            {PROJECT_STYLES.map((s, i) => (
+              <button
+                key={s.label}
+                onClick={() => setTheme(i)}
+                className={cn(
+                  "group flex cursor-pointer flex-col gap-1.5 rounded-2xl border p-2 transition-all",
+                  theme === i ? "border-amber-400 ring-2 ring-amber-400/40" : "border-line hover:border-muted"
+                )}
+                aria-label={s.label}
+              >
+                <span className="h-10 w-full rounded-xl" style={gradientStyle({ id: `__style__${i}`, theme: i })} />
+                <span className="truncate text-center text-[10px] font-bold text-ink">{s.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Tags */}
         <div>

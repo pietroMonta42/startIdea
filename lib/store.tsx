@@ -10,7 +10,7 @@ import { initials, timeAgo, uid } from "./utils";
 import { supabase } from "./supabase/client";
 import { isSupabaseConfigured } from "./supabase/client";
 
-const LS_LOCAL_STARS = "startidea-local-stars-v1";
+const LS_LOCAL_STARS = "sparklab-local-stars-v1";
 
 interface Store {
   authReady: boolean;
@@ -25,6 +25,8 @@ interface Store {
   // auth
   signInOAuth: (provider: "github" | "google") => Promise<void>;
   signInOtp: (email: string, meta: { full_name: string; role: RoleBadge; university: string }) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string }) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
   setAvailability: (a: Availability) => void;
@@ -80,6 +82,7 @@ function projectFromRow(row: Record<string, unknown>): Project {
     tags: (row.tags as string[]) ?? [],
     location: (row.location as string) ?? "",
     stars_count: (row.stars_count as number) ?? 0,
+    theme: typeof row.theme === "number" ? (row.theme as number) : undefined,
     created_at: row.created_at as string,
   };
 }
@@ -209,6 +212,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     else toast("Magic link inviato! Controlla la mail 📩");
   }, [toast]);
 
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) toast(error.message);
+  }, [toast]);
+
+  const signUpWithEmail = useCallback(async (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string }) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/profilo`,
+        data: { full_name: meta.full_name, role_badge: meta.role, university: meta.university },
+      },
+    });
+    if (error) toast(error.message);
+    else toast("Controlla la mail per confermare l'account ✉️");
+  }, [toast]);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -240,6 +261,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       open_roles: p.open_roles,
       tags: p.tags,
       location: p.location,
+      theme: p.theme,
     }).select().single();
     if (error || !data) { toast(error?.message ?? "Errore"); return null; }
     setDbProjects((prev) => [projectFromRow(data), ...prev]);
@@ -347,14 +369,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<Store>(() => ({
     authReady, hydrated, session, user, isAdmin, profiles, projects, comments, applications,
-    signInOAuth, signInOtp, signOut, updateProfile, setAvailability,
+    signInOAuth, signInOtp, signInWithEmail, signUpWithEmail, signOut, updateProfile, setAvailability,
     addProject, updateProject, deleteProject,
     toggleStar, addComment, addApplication,
     deleteProfileAdmin,
     hasStarred, starCount, commentsFor, applicationsFor, myApplication,
     profileById, projectById, isDemoProject, toast,
   }), [authReady, hydrated, session, user, isAdmin, profiles, projects, comments, applications,
-    signInOAuth, signInOtp, signOut, updateProfile, setAvailability,
+    signInOAuth, signInOtp, signInWithEmail, signUpWithEmail, signOut, updateProfile, setAvailability,
     addProject, updateProject, deleteProject,
     toggleStar, addComment, addApplication, deleteProfileAdmin,
     hasStarred, starCount, commentsFor, applicationsFor, myApplication,

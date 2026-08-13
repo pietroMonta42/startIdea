@@ -24,6 +24,7 @@ export interface Project {
   tags: string[];
   stars_count: number;
   location: string;
+  theme?: number;
   created_at: string;
 }
 
