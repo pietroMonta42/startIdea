@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, BriefcaseBusiness, Check, FileText, MapPin, Pencil, Send, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ArrowUp, BriefcaseBusiness, Check, FileText, MapPin, Pencil, Trash2, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Project, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
 import { cn, gradientStyle, scrimStyle, timeAgo } from "@/lib/utils";
@@ -268,7 +268,7 @@ export default function ProjectPage() {
                   className="h-10 flex-1 rounded-full border border-line bg-bg px-4 text-sm text-ink outline-none placeholder:text-muted/70 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
                 />
                 <Button size="md" className="h-10 w-10 shrink-0 rounded-full p-0" onClick={submitComment} aria-label="Invia commento">
-                  <Send className="h-4 w-4" />
+                  <ArrowUp className="h-5 w-5" strokeWidth={2.5} />
                 </Button>
               </div>
             </>
