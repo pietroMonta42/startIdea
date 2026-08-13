@@ -69,6 +69,9 @@ create table if not exists public.projects (
 create index if not exists projects_created_at_idx on public.projects (created_at desc);
 create index if not exists projects_stars_idx on public.projects (stars_count desc);
 
+-- Aggiunge la colonna theme anche se la tabella esiste già (vecchio schema)
+alter table public.projects add column if not exists theme integer not null default 0;
+
 -- ------------------------------------------------------------
 -- PROJECT_STARS (PK composita)
 -- ------------------------------------------------------------
