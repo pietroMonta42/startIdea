@@ -221,3 +221,18 @@ create policy "projects_admin_delete" on public.projects for delete
 drop policy if exists "comments_admin_delete" on public.project_comments;
 create policy "comments_admin_delete" on public.project_comments for delete
   using (public.is_admin(auth.uid()));
+
+-- ============================================================
+-- SECURITY HARDENING (Supabase security advisor)
+-- Le funzioni trigger non devono essere chiamabili via REST RPC.
+-- NB: i trigger continuano a funzionare (girano con i privilegi
+-- del proprietario, il check EXECUTE avviene alla creazione).
+-- ============================================================
+
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.sync_stars_count() from public, anon, authenticated;
+
+-- is_admin serve alle policy RLS (valutate coi privilegi dell'utente
+-- autenticato) → non revocarla da authenticated. Revocala da anon.
+-- Nota: is_admin è comunque già leggibile via SELECT pubblico su profiles.
+revoke execute on function public.is_admin(uuid) from public, anon;
