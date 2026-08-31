@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ThemeProvider, useTheme } from "next-themes";
 import { motion } from "framer-motion";
-import { Compass, Home, Moon, Plus, Sun, User } from "lucide-react";
+import { Compass, Home, LogOut, Moon, Plus, Sun, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { Avatar } from "./ui";
@@ -56,7 +56,7 @@ const NAV = [
 
 function SideNav() {
   const pathname = usePathname();
-  const { user } = useStore();
+  const { user, signOut } = useStore();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-surface px-5 py-6 lg:flex">
       <Link href="/" className="flex items-center gap-3 px-1">
@@ -98,21 +98,31 @@ function SideNav() {
         Pubblica un&apos;idea
       </Link>
 
-      <div className="mt-auto flex items-center justify-between">
-        {user ? (
-          <div className="flex items-center gap-2.5">
-            <Avatar name={user.full_name} size="sm" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">{user.full_name.split(" ")[0]}</p>
-              <p className="text-xs text-muted">Online</p>
+      <div className="mt-auto flex flex-col gap-2.5">
+        <div className="flex items-center justify-between">
+          {user ? (
+            <div className="flex items-center gap-2.5">
+              <Avatar name={user.full_name} size="sm" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink">{user.full_name.split(" ")[0]}</p>
+                <p className="text-xs text-muted">Online</p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <p className="text-xs leading-snug text-muted">
-            Il punto di gravità dell&apos;innovazione italiana
-          </p>
+          ) : (
+            <p className="text-xs leading-snug text-muted">
+              Il punto di gravità dell&apos;innovazione italiana
+            </p>
+          )}
+          <ThemeToggle />
+        </div>
+        {user && (
+          <button
+            onClick={signOut}
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-line px-4 py-2.5 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10"
+          >
+            <LogOut className="h-4 w-4" /> Esci
+          </button>
         )}
-        <ThemeToggle />
       </div>
     </aside>
   );

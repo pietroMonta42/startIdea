@@ -196,7 +196,7 @@ function ProfileView() {
             <div className="flex gap-2 self-start pt-2">
               {isAdmin && <Badge className="bg-brand-500 text-white"><Shield className="h-3 w-3" /> Admin</Badge>}
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil className="h-3.5 w-3.5" /> Modifica</Button>
-              <Button variant="ghost" size="sm" onClick={signOut} className="text-red-500 hover:bg-red-500/10"><LogOut className="h-3.5 w-3.5" /> Esci</Button>
+              <Button variant="ghost" size="sm" onClick={signOut} className="text-red-500 hover:bg-red-500/10 lg:hidden"><LogOut className="h-3.5 w-3.5" /> Esci</Button>
             </div>
           </div>
           <h1 className="mt-3 font-display text-2xl font-bold text-ink">{user.full_name}</h1>
