@@ -23,7 +23,7 @@ const STEPS = [
   {
     icon: Users,
     title: "Trova il team",
-    text: "Chi ha le competenze vede le tue stole aperte e si candida con un messaggio mirato. Tu scegli chi sale a bordo.",
+    text: "Chi ha le competenze vede i tuoi ruoli aperti e si candida con un messaggio mirato. Tu scegli chi sale a bordo.",
   },
 ];
 

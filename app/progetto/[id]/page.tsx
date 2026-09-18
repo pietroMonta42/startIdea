@@ -69,7 +69,7 @@ export default function ProjectPage() {
 
       {isDemoProject(project.id) && (
         <div className="rounded-2xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm font-semibold text-brand-600 dark:text-brand-400">
-          ⭐ Progetto dimostrativo — publica il tuo da /nuovo per renderlo modificabile e candidabile.
+          ⭐ Progetto dimostrativo — pubblica il tuo progetto da /nuovo per renderlo modificabile e candidabile.
         </div>
       )}
 
@@ -366,7 +366,7 @@ function EditProjectModal({
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" />
         <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Pitch (max 140)" />
         <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
-        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (separati da virgola)" />
+        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tag (separati da virgola)" />
         <Input value={roles} onChange={(e) => setRoles(e.target.value)} placeholder="Ruoli aperti (separati da virgola)" />
         <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="README (markdown)" className="font-mono text-[13px]" />
         <Button

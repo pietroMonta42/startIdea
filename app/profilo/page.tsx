@@ -428,7 +428,7 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
         </div>
         <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università" />
-        <Input value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Skills (separate da virgola)" />
+        <Input value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Competenze (separate da virgola)" />
         <Textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Bio" />
         <Button size="lg" onClick={async () => { await updateProfile({ full_name: name, role_badge: role, university, bio, skills: skills.split(",").map((s) => s.trim()).filter(Boolean) }); onClose(); }}>Salva</Button>
       </div>
