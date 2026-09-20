@@ -18,7 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { Availability, Profile, ROLE_COLORS, ROLE_LABELS, RoleBadge } from "@/lib/types";
+import { Availability, Profile, PROFILE_COLORS, ROLE_COLORS, ROLE_LABELS, RoleBadge } from "@/lib/types";
 import { cn, gradientStyle, initials, timeAgo } from "@/lib/utils";
 import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
 import { Logo } from "@/components/app-shell";
@@ -35,14 +35,17 @@ function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [name, setName] = useState("");
   const [university, setUniversity] = useState("");
   const [role, setRole] = useState<RoleBadge>("tech_dev");
+  const [customRole, setCustomRole] = useState("");
 
   const sendOtp = () => {
     if (!email.includes("@")) return toast("Inserisci una mail valida");
     if (name.trim().length < 3) return toast("Inserisci il tuo nome");
-    signInOtp(email.trim(), { full_name: name.trim(), role, university: university.trim() });
+    if (role === "other" && !customRole.trim()) return toast("Specifica il tuo ruolo");
+    signInOtp(email.trim(), { full_name: name.trim(), role, role_custom: customRole.trim(), university: university.trim() });
   };
 
   const submitPassword = () => {
@@ -50,7 +53,9 @@ function LoginScreen() {
     if (password.length < 6) return toast("La password deve avere almeno 6 caratteri");
     if (isSignUp) {
       if (name.trim().length < 3) return toast("Inserisci il tuo nome");
-      signUpWithEmail(email.trim(), password, { full_name: name.trim(), role, university: university.trim() });
+      if (password !== passwordConfirmation) return toast("Le password non coincidono");
+      if (role === "other" && !customRole.trim()) return toast("Specifica il tuo ruolo");
+      signUpWithEmail(email.trim(), password, { full_name: name.trim(), role, role_custom: customRole.trim(), university: university.trim() });
     } else {
       signInWithEmail(email.trim(), password);
     }
@@ -65,7 +70,7 @@ function LoginScreen() {
       >
         <Logo size={56} />
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Entra nella community</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Entra nella comunità</h1>
           <p className="mt-1 text-sm text-muted">
             {mode === "password"
               ? isSignUp ? "Crea il tuo account con email e password." : "Bentornato. Accedi con la tua password."
@@ -118,17 +123,21 @@ function LoginScreen() {
           )}
 
           {isSignUp && mode === "password" && (
+            <Input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" type="password" />
+          )}
+
+          {isSignUp && mode === "password" && (
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome e cognome" />
           )}
 
           {(mode === "magic" || (mode === "password" && isSignUp)) && (
-            <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università (es. Politecnico di Milano)" />
+            <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università, lavoro o altro (facoltativo)" />
           )}
 
           {(mode === "magic" || (mode === "password" && isSignUp)) && (
             <div>
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Il tuo superpotere</span>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 {(Object.keys(ROLE_LABELS) as RoleBadge[]).map((r) => (
                   <button
                     key={r}
@@ -142,6 +151,9 @@ function LoginScreen() {
                   </button>
                 ))}
               </div>
+              {role === "other" && (
+                <Input value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Specifica il tuo ruolo" className="mt-2" />
+              )}
             </div>
           )}
 
@@ -189,12 +201,19 @@ function ProfileView() {
         animate={{ opacity: 1, y: 0 }}
         className="overflow-hidden rounded-3xl border border-line bg-surface"
       >
-        <div className="dot-grid h-24" style={gradientStyle(user.full_name, { dots: true })} />
+        <div
+           className="dot-grid h-24"
+           style={{
+             backgroundColor: user.profile_color ?? "#f97316",
+             backgroundImage: `radial-gradient(rgba(255,255,255,0.22) 1px, transparent 1px), linear-gradient(135deg, ${user.profile_color ?? "#f97316"}, color-mix(in srgb, ${user.profile_color ?? "#f97316"} 55%, #111827))`,
+             backgroundSize: "18px 18px, auto",
+           }}
+        />
         <div className="px-5 pb-5 sm:px-7">
           <div className="-mt-10 flex items-end justify-between">
-            <Avatar name={user.full_name} size="xl" className="ring-4 ring-surface" />
+            <Avatar name={user.full_name} size="xl" color={user.profile_color} className="ring-4 ring-surface" />
             <div className="flex gap-2 self-start pt-2">
-              {isAdmin && <Badge className="bg-brand-500 text-white"><Shield className="h-3 w-3" /> Admin</Badge>}
+              {isAdmin && <Badge className="bg-brand-500 text-white"><Shield className="h-3 w-3" /> Amministratore</Badge>}
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil className="h-3.5 w-3.5" /> Modifica</Button>
               <Button variant="ghost" size="sm" onClick={signOut} className="text-red-500 hover:bg-red-500/10 lg:hidden"><LogOut className="h-3.5 w-3.5" /> Esci</Button>
             </div>
@@ -202,7 +221,7 @@ function ProfileView() {
           <h1 className="mt-3 font-display text-2xl font-bold text-ink">{user.full_name}</h1>
           {session?.user?.email && <p className="text-xs text-muted">{session.user.email}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge className={ROLE_COLORS[user.role_badge]}>{ROLE_LABELS[user.role_badge]}</Badge>
+            <Badge className={ROLE_COLORS[user.role_badge]}>{user.role_badge === "other" ? user.role_custom || ROLE_LABELS.other : ROLE_LABELS[user.role_badge]}</Badge>
             {user.university && <span className="text-xs text-muted">{user.university}</span>}
           </div>
 
@@ -327,7 +346,7 @@ function ProfileView() {
           <div>
             <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-ink"><Send className="h-4 w-4 text-brand-500" /> Inviate ({myApps.length})</h3>
             {myApps.length === 0 ? (
-              <EmptyState icon={<Send className="h-8 w-8 text-brand-500" />} title="Nessuna candidatura" text="Trova un progetto che ti gasa e candidati per un ruolo aperto." cta={{ href: "/esplora", label: "Vedi la classifica" }} />
+              <EmptyState icon={<Send className="h-8 w-8 text-brand-500" />} title="Nessuna candidatura" text="Trova un progetto che ti gasa e candidati per un ruolo aperto." cta={{ href: "/esplora", label: "Esplora i progetti" }} />
             ) : (
               <div className="flex flex-col gap-2.5">
                 {myApps.map((a) => {
@@ -356,16 +375,16 @@ function ProfileView() {
         <section className="rounded-3xl border border-brand-500/30 bg-brand-500/5 p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-brand-500" />
-            <h2 className="font-display text-lg font-bold text-ink">Admin · GDPR & Privacy</h2>
+            <h2 className="font-display text-lg font-bold text-ink">Amministratore · GDPR e riservatezza</h2>
           </div>
           <p className="mt-1 text-xs text-muted">Gestione account e contenuti secondo il regolamento UE. L&apos;eliminazione qui cancella profilo, progetti, commenti e candidature collegati. Per rimuovere definitivamente l&apos;utente auth, esegui in SQL Editor: <code className="rounded bg-line/70 px-1 py-0.5 text-[11px]">delete from auth.users where id=&apos;&lt;id&gt;&apos;;</code></p>
           <div className="mt-4 flex flex-col gap-2.5">
             {profiles.filter((p) => p.id !== user.id).map((p) => (
               <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3">
-                <Avatar name={p.full_name} size="sm" />
+                <Avatar name={p.full_name} size="sm" color={p.profile_color} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-ink">{p.full_name} {p.is_admin && <span className="text-brand-500">· admin</span>}</p>
-                  <p className="truncate text-xs text-muted">{ROLE_LABELS[p.role_badge]} · {p.university ?? "—"}</p>
+                  <p className="truncate text-xs text-muted">{p.role_badge === "other" ? p.role_custom || ROLE_LABELS.other : ROLE_LABELS[p.role_badge]} · {p.university ?? "—"}</p>
                 </div>
                 <button onClick={() => setConfirmDelete(p)} className="flex cursor-pointer items-center gap-1 rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-600 transition-colors hover:bg-red-500/20" aria-label="Elimina account">
                   <Trash2 className="h-3.5 w-3.5" /> Elimina
@@ -397,20 +416,24 @@ function ProfileView() {
 }
 
 function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user, updateProfile } = useStore();
+  const { user, updateProfile, toast } = useStore();
   const [name, setName] = useState("");
   const [role, setRole] = useState<RoleBadge>("tech_dev");
+  const [customRole, setCustomRole] = useState("");
   const [university, setUniversity] = useState("");
   const [bio, setBio] = useState("");
   const [skills, setSkills] = useState("");
+  const [profileColor, setProfileColor] = useState(PROFILE_COLORS[0].value);
 
   useEffect(() => {
     if (open && user) {
       setName(user.full_name);
       setRole(user.role_badge);
+      setCustomRole(user.role_custom ?? "");
       setUniversity(user.university ?? "");
       setBio(user.bio ?? "");
       setSkills((user.skills ?? []).join(", "));
+      setProfileColor(user.profile_color ?? PROFILE_COLORS[0].value);
     }
   }, [open, user]);
 
@@ -421,16 +444,36 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome e cognome" />
         <div>
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Ruolo</span>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {(Object.keys(ROLE_LABELS) as RoleBadge[]).map((r) => (
               <button key={r} onClick={() => setRole(r)} className={cn("cursor-pointer rounded-2xl border px-3 py-2 text-xs font-bold transition-all", role === r ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-surface text-muted hover:text-ink")}>{ROLE_LABELS[r]}</button>
             ))}
           </div>
+          {role === "other" && <Input value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Specifica il tuo ruolo" className="mt-2" />}
         </div>
-        <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università" />
+        <div>
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Colore del profilo</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {PROFILE_COLORS.map((color) => (
+              <button
+                key={color.value}
+                type="button"
+                onClick={() => setProfileColor(color.value)}
+                className={cn("h-8 w-8 cursor-pointer rounded-full border-2 transition-transform hover:scale-110", profileColor === color.value ? "border-ink ring-2 ring-brand-500/30" : "border-transparent")}
+                style={{ backgroundImage: color.gradient }}
+                aria-label={`Scegli il colore ${color.name}`}
+              />
+            ))}
+            <label className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-line bg-surface text-xs font-bold text-muted" title="Scegli un colore personalizzato">
+              <input type="color" value={profileColor} onChange={(e) => setProfileColor(e.target.value)} className="h-10 w-10 cursor-pointer opacity-0" aria-label="Scegli un colore personalizzato" />
+              <span className="pointer-events-none absolute">+</span>
+            </label>
+          </div>
+        </div>
+        <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università, lavoro o altro (facoltativo)" />
         <Input value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Competenze (separate da virgola)" />
         <Textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Bio" />
-        <Button size="lg" onClick={async () => { await updateProfile({ full_name: name, role_badge: role, university, bio, skills: skills.split(",").map((s) => s.trim()).filter(Boolean) }); onClose(); }}>Salva</Button>
+        <Button size="lg" onClick={async () => { if (role === "other" && !customRole.trim()) return toast("Specifica il tuo ruolo"); await updateProfile({ full_name: name, role_badge: role, role_custom: role === "other" ? customRole.trim() : null, university, bio, skills: skills.split(",").map((s) => s.trim()).filter(Boolean), profile_color: profileColor }); onClose(); }}>Salva</Button>
       </div>
     </Modal>
   );

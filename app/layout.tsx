@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s · SparkLab",
   },
   description:
-    "La community dove studenti con idee incontrano studenti con competenze. Pubblica la tua startup, raccogli stelle, trova il tuo co-founder.",
+    "La comunità dove studenti con idee incontrano studenti con competenze. Pubblica il tuo progetto, raccogli stelle, trova il tuo cofondatore.",
   appleWebApp: {
     capable: true,
     title: "SparkLab",

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "SparkLab — Il punto di gravità dell'innovazione italiana",
     short_name: "SparkLab",
     description:
-      "La community dove studenti con idee incontrano studenti con competenze. Pubblica la tua startup, raccogli stelle, trova il tuo co-founder.",
+      "La comunità dove studenti con idee incontrano studenti con competenze. Pubblica il tuo progetto, raccogli stelle, trova il tuo cofondatore.",
     start_url: "/",
     display: "standalone",
     background_color: "#0b0b0d",

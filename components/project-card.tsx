@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MapPin, MessageCircle, Star } from "lucide-react";
 import { Project } from "@/lib/types";
+import { categoryLabel } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { cn, gradientStyle, scrimStyle, initials, timeAgo } from "@/lib/utils";
 import { Badge } from "./ui";
@@ -118,7 +119,7 @@ export default function ProjectCard({ project, index = 0 }: { project: Project; 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {project.tags.map((t) => (
             <Badge key={t} className="bg-line/70 text-muted">
-              {t}
+              {categoryLabel(t)}
             </Badge>
           ))}
           {project.open_roles.slice(0, 2).map((r) => (

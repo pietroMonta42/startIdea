@@ -13,11 +13,13 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   full_name text not null,
   avatar_url text,
-  role_badge text not null check (role_badge in ('tech_dev', 'design', 'marketing', 'business')),
+  role_badge text not null check (role_badge in ('tech_dev', 'design', 'marketing', 'business', 'other')),
+  role_custom text,
   skills text[] not null default '{}',
   bio text,
   availability text not null default 'available' check (availability in ('available', 'busy', 'consulting')),
   university text,
+  profile_color text not null default '#f97316',
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -25,6 +27,10 @@ create table if not exists public.profiles (
 -- Aggiunge la colonna anche se la tabella esiste già (idempotente)
 alter table public.profiles add column if not exists is_admin boolean not null default false;
 alter table public.profiles add column if not exists university text;
+alter table public.profiles add column if not exists role_custom text;
+alter table public.profiles add column if not exists profile_color text not null default '#f97316';
+alter table public.profiles drop constraint if exists profiles_role_badge_check;
+alter table public.profiles add constraint profiles_role_badge_check check (role_badge in ('tech_dev', 'design', 'marketing', 'business', 'other'));
 
 -- Crea automaticamente il profilo alla registrazione
 create or replace function public.handle_new_user()
@@ -32,11 +38,12 @@ returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, role_badge, university)
+  insert into public.profiles (id, full_name, role_badge, role_custom, university)
   values (
     new.id,
     coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1)),
     coalesce(new.raw_user_meta_data ->> 'role_badge', 'tech_dev'),
+    new.raw_user_meta_data ->> 'role_custom',
     new.raw_user_meta_data ->> 'university'
   )
   on conflict (id) do nothing;

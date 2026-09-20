@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lightbulb, MapPin, Plus, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ALL_TAGS } from "@/lib/data";
+import { ALL_CATEGORIES, categoryLabel } from "@/lib/data";
 import { cn, gradientStyle, PROJECT_STYLES } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { Badge, Button, FeedSkeleton, Input, Textarea } from "@/components/ui";
@@ -38,7 +38,7 @@ export default function NuovoPage() {
   const [title, setTitle] = useState("");
   const [pitch, setPitch] = useState("");
   const [location, setLocation] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [roleInput, setRoleInput] = useState("");
   const [readme, setReadme] = useState(README_TEMPLATE);
@@ -64,8 +64,8 @@ export default function NuovoPage() {
     );
   }
 
-  const toggleTag = (t: string) =>
-    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : prev.length < 3 ? [...prev, t] : prev));
+  const toggleCategory = (category: string) =>
+    setCategories((prev) => (prev.includes(category) ? prev.filter((x) => x !== category) : prev.length < 3 ? [...prev, category] : prev));
 
   const addRole = () => {
     const r = roleInput.trim();
@@ -79,13 +79,13 @@ export default function NuovoPage() {
     if (title.trim().length < 3) return toast("Il titolo è troppo corto");
     if (pitch.trim().length < 10) return toast("Il pitch deve dire qualcosa di concreto");
     if (!location.trim()) return toast("Aggiungi la tua città");
-    if (tags.length === 0) return toast("Scegli almeno un tag");
+    if (categories.length === 0) return toast("Scegli almeno una categoria");
     if (roles.length === 0) return toast("Aggiungi almeno un ruolo che cerchi");
     const id = await addProject({
       title: title.trim(),
       short_pitch: pitch.trim(),
       location: location.trim(),
-      tags,
+      tags: categories,
       open_roles: roles,
       readme_markdown: readme,
       theme,
@@ -120,7 +120,7 @@ export default function NuovoPage() {
         {/* Pitch */}
         <label className="block">
           <span className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted">
-            Elevator pitch
+             Presentazione breve
             <span className={cn("font-mono", pitch.length > 140 && "text-red-500")}>{pitch.length}/140</span>
           </span>
           <Textarea
@@ -161,22 +161,22 @@ export default function NuovoPage() {
           </div>
         </div>
 
-        {/* Tags */}
+        {/* Categorie */}
         <div>
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Settori (max 3)</span>
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Categorie (massimo 3)</span>
           <div className="flex flex-wrap gap-2">
-            {ALL_TAGS.map((t) => (
+            {ALL_CATEGORIES.map((category) => (
               <button
-                key={t}
-                onClick={() => toggleTag(t)}
+                key={category}
+                onClick={() => toggleCategory(category)}
                 className={cn(
                   "cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition-all",
-                  tags.includes(t)
+                  categories.includes(category)
                     ? "border-brand-500 bg-brand-500 text-white shadow-lg shadow-brand-500/25"
                     : "border-line bg-surface text-muted hover:text-ink"
                 )}
               >
-                {t}
+                {categoryLabel(category)}
               </button>
             ))}
           </div>
@@ -190,7 +190,7 @@ export default function NuovoPage() {
               value={roleInput}
               onChange={(e) => setRoleInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addRole())}
-              placeholder='Es. "Frontend Developer"'
+               placeholder='Es. "Sviluppatore frontend"'
             />
             <Button variant="secondary" onClick={addRole} aria-label="Aggiungi ruolo" className="shrink-0">
               <Plus className="h-4.5 w-4.5" />

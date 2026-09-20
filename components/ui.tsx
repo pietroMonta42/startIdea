@@ -62,10 +62,12 @@ export function Avatar({
   name,
   size = "md",
   className,
+  color,
 }: {
   name: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  color?: string;
 }) {
   const sizes = {
     sm: "h-8 w-8 text-[11px] rounded-xl",
@@ -80,7 +82,7 @@ export function Avatar({
         sizes[size],
         className
       )}
-      style={gradientStyle(name)}
+      style={color ? { backgroundColor: color } : gradientStyle(name)}
     >
       {initials(name)}
     </div>

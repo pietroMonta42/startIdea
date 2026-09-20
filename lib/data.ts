@@ -51,7 +51,7 @@ export const SEED_PROFILES: Profile[] = [
     full_name: "Chiara Marchetti",
     avatar_url: null,
     role_badge: "marketing",
-    skills: ["TikTok Ads", "Copywriting", "SEO", "Community"],
+    skills: ["Pubblicità su TikTok", "Scrittura pubblicitaria", "SEO", "Comunità"],
     bio: "Growth hacker in erba. Ho fatto 100k views vendendo evidenziatori.",
     availability: "available",
     university: "Università di Torino",
@@ -107,7 +107,7 @@ Partiamo dalle tesi di laurea in Italia, poi tesi di dottorato e paper di ricerc
 ## Stato attuale
 
 Prototype funzionante in Python + FastAPI. Manca il frontend e qualcuno che ci aiuti a validare con studenti veri.`,
-    open_roles: ["Frontend Developer", "UX Designer"],
+    open_roles: ["Sviluppatore frontend", "Designer UX"],
     tags: ["AI", "EdTech"],
     stars_count: 47,
     location: "Padova",
@@ -136,7 +136,7 @@ Le mense stanno digitalizzando i tornelli. Noi portiamo la coda virtuale, loro r
 ## Stato attuale
 
 LOI firmata con una mensa pilota a Bologna (1.200 pasti/giorno). Cerchiamo chi costruisce l'app.`,
-    open_roles: ["Mobile Developer (Flutter)", "Backend Developer"],
+    open_roles: ["Sviluppatore mobile (Flutter)", "Sviluppatore backend"],
     tags: ["Food", "Mobile"],
     stars_count: 38,
     location: "Bologna",
@@ -155,17 +155,17 @@ Gli appunti migliori circolano su gruppi Telegram caotici e PDF senza nome. Chi 
 
 - **Upload di appunti e riassunti** verificati per corso e professore
 - Sistema a crediti: carichi → guadagni → scarichi
-- Rating della community su qualità e affidabilità
+- Valutazione della comunità su qualità e affidabilità
 - Modalità "esame imminente": i materiali più votati in cima
 
 ## Differenza rispetto a Docsity/StuDocu
 
-Solo community universitarie verificate (email istituzionale), zero contenuti rubati, focus sui corsi italiani.
+Solo comunità universitarie verificate (email istituzionale), zero contenuti rubati, focus sui corsi italiani.
 
 ## Stato attuale
 
-Design system completo in Figma, 60 schermate. Cerco un co-founder tecnico per costruire l'MVP.`,
-    open_roles: ["Full-stack Developer", "Marketing / Community"],
+Design system completo in Figma, 60 schermate. Cerco un cofondatore tecnico per costruire l'MVP.`,
+    open_roles: ["Sviluppatore full-stack", "Marketing / Comunità"],
     tags: ["EdTech", "Marketplace"],
     stars_count: 29,
     location: "Milano",
@@ -194,7 +194,7 @@ Free per studenti. Revenue da partnership (assicurazioni affitto, utenze luce/ga
 ## Stato attuale
 
 Validazione: 200+ studenti intervistati, 87% userebbe l'app domani. Wireframe pronti.`,
-    open_roles: ["Mobile Developer", "Designer"],
+    open_roles: ["Sviluppatore mobile", "Designer"],
     tags: ["Fintech", "Mobile"],
     stars_count: 26,
     location: "Milano",
@@ -223,7 +223,7 @@ Le università vogliono essere sostenibili ma **gli studenti non sono coinvolti*
 ## Stato attuale
 
 Landing page + brand identity. Cerchiamo sviluppatori per il MVP della piattaforma.`,
-    open_roles: ["Full-stack Developer", "Game Designer"],
+    open_roles: ["Sviluppatore full-stack", "Designer di giochi"],
     tags: ["Green", "Social"],
     stars_count: 22,
     location: "Torino",
@@ -301,8 +301,8 @@ Gli studenti Erasmus restano tra di loro, gli italiani pure. **Due mondi nello s
 
 ## Stato attuale
 
-Community pilota di 300 studenti a Milano gestita via Google Forms (sì, davvero). È ora di costruire il prodotto vero.`,
-    open_roles: ["Mobile Developer", "Community Manager"],
+Comunità pilota di 300 studenti a Milano gestita via Google Forms (sì, davvero). È ora di costruire il prodotto vero.`,
+    open_roles: ["Sviluppatore mobile", "Responsabile della comunità"],
     tags: ["Social", "EdTech"],
     stars_count: 12,
     location: "Milano",
@@ -355,4 +355,40 @@ export const SEED_COMMENTS: ProjectComment[] = [
   },
 ];
 
-export const ALL_TAGS = ["AI", "EdTech", "Fintech", "Food", "Green", "Health", "Mobile", "Marketplace", "Social", "DevTools"];
+// The database field remains `tags` for compatibility with existing projects.
+// These are presented as categories in the UI.
+export const ALL_CATEGORIES = [
+  "AI",
+  "EdTech",
+  "Fintech",
+  "Food",
+  "Green",
+  "Health",
+  "Mobile",
+  "Marketplace",
+  "Social",
+  "DevTools",
+  "Casa e affitti",
+  "Finanza personale",
+  "PropTech",
+  "Dati e analisi",
+  "Risparmio",
+  "Servizi quotidiani",
+];
+
+export const CATEGORY_LABELS: Record<string, string> = {
+  AI: "Intelligenza artificiale",
+  EdTech: "Educazione",
+  Fintech: "Tecnologia finanziaria",
+  Food: "Alimentazione",
+  Green: "Sostenibilità",
+  Health: "Salute",
+  Mobile: "App mobile",
+  Marketplace: "Mercato online",
+  Social: "Sociale",
+  DevTools: "Strumenti per sviluppatori",
+};
+
+export function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category] ?? category;
+}

@@ -18,7 +18,7 @@ const STEPS = [
   {
     icon: Star,
     title: "Raccogli stelle",
-    text: "La community valida le idee con le stelle. Le migliori salgono in classifica e attirano i talenti giusti.",
+    text: "La comunità valida le idee con le stelle. Le migliori salgono in classifica e attirano i talenti giusti.",
   },
   {
     icon: Users,
@@ -28,7 +28,7 @@ const STEPS = [
 ];
 
 const VALUES = [
-  { icon: Compass, label: "Co-founding", text: "Non cerchiamo dipendenti. Cerchiamo co-founder." },
+  { icon: Compass, label: "Co-fondazione", text: "Non cerchiamo dipendenti. Cerchiamo cofondatori." },
   { icon: Sparkles, label: "Proof of work", text: "Il CV è il portfolio di progetti reali che costruisci qui." },
   { icon: GitBranch, label: "Open by default", text: "Le idee sono pubbliche. L'esecuzione fa la differenza, non il segreto." },
 ];
@@ -72,7 +72,7 @@ export default function HomePage() {
         </div>
 
         <p className="max-w-md text-base leading-relaxed text-muted">
-          La community dove studenti con idee incontrano studenti con competenze. Pubblica la tua startup, raccogli stelle, trova il tuo co-founder.
+          La comunità dove studenti con idee incontrano studenti con competenze. Pubblica il tuo progetto, raccogli stelle, trova il tuo cofondatore.
         </p>
 
         <div className="flex w-full max-w-xs flex-col gap-2.5">
@@ -80,7 +80,7 @@ export default function HomePage() {
             href="/profilo"
             className="group flex h-12 items-center justify-center gap-2 rounded-2xl bg-brand-500 text-sm font-bold text-white shadow-lg shadow-brand-500/25 transition-colors hover:bg-brand-600"
           >
-            Entra nella community
+            Entra nella comunità
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
@@ -135,13 +135,13 @@ export default function HomePage() {
         </p>
       </motion.div>
 
-      {/* Live community stats */}
+      {/* Statistiche della comunità */}
       {stats.projects > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }} className="flex flex-col gap-3">
-          <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-muted">La community ora</h2>
+          <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-muted">La comunità ora</h2>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Flame, label: "Startup attive", value: stats.projects },
+              { icon: Flame, label: "Progetti attivi", value: stats.projects },
               { icon: Star, label: "Stelle date", value: stats.stars },
               { icon: MessageCircle, label: "Commenti", value: stats.comments },
             ].map((s) => (

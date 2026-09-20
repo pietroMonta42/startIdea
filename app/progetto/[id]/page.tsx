@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowUp, BriefcaseBusiness, Check, FileText, MapPin, Pencil, Trash2, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Project, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
+import { categoryLabel } from "@/lib/data";
 import { cn, gradientStyle, scrimStyle, timeAgo } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { StarButton } from "@/components/project-card";
@@ -32,7 +33,7 @@ export default function ProjectPage() {
       <div className="flex flex-col items-center gap-4 py-24 text-center">
         <p className="font-display text-xl font-bold text-ink">Progetto non trovato</p>
         <Link href="/" className="font-semibold text-brand-600 dark:text-brand-400">
-          ← Torna alla Home
+          ← Torna all&apos;inizio
         </Link>
       </div>
     );
@@ -85,8 +86,8 @@ export default function ProjectPage() {
         <span className="pointer-events-none absolute inset-0" style={scrimStyle()} />
 
         <div className="relative flex flex-wrap items-center gap-2">
-          {project.tags.map((t) => (
-            <Badge key={t} className="bg-white/20 text-white backdrop-blur-sm">{t}</Badge>
+            {project.tags.map((t) => (
+              <Badge key={t} className="bg-white/20 text-white backdrop-blur-sm">{categoryLabel(t)}</Badge>
           ))}
         </div>
 
@@ -210,11 +211,11 @@ export default function ProjectPage() {
             <h2 className="font-display text-lg font-bold text-ink">Team</h2>
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <Avatar name={owner.full_name} size="lg" />
+            <Avatar name={owner.full_name} size="lg" color={owner.profile_color} />
             <div className="min-w-0 flex-1">
               <p className="font-bold text-ink">{owner.full_name}</p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <Badge className={ROLE_COLORS[owner.role_badge]}>{ROLE_LABELS[owner.role_badge]}</Badge>
+                <Badge className={ROLE_COLORS[owner.role_badge]}>{owner.role_badge === "other" ? owner.role_custom || ROLE_LABELS.other : ROLE_LABELS[owner.role_badge]}</Badge>
                 {owner.university && <span className="text-xs text-muted">{owner.university}</span>}
               </div>
             </div>
@@ -223,10 +224,10 @@ export default function ProjectPage() {
         </section>
       )}
 
-      {/* Community */}
+      {/* Comunità */}
       <section id="community" className="scroll-mt-20 rounded-3xl border border-line bg-surface p-5 sm:p-6">
         <h2 className="font-display text-lg font-bold text-ink">
-          Community <span className="text-sm font-semibold text-muted">({comments.length})</span>
+          Comunità <span className="text-sm font-semibold text-muted">({comments.length})</span>
         </h2>
         <p className="mt-0.5 text-xs text-muted">Domande, feedback e spunti per il founder — in stile Hacker News.</p>
 
@@ -245,7 +246,7 @@ export default function ProjectPage() {
                 <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md bg-bg p-3.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-ink">{author?.full_name ?? "Utente"}</span>
-                    {author && <Badge className={cn(ROLE_COLORS[author.role_badge], "px-2 py-0 text-[10px]")}>{ROLE_LABELS[author.role_badge]}</Badge>}
+                    {author && <Badge className={cn(ROLE_COLORS[author.role_badge], "px-2 py-0 text-[10px]")}>{author.role_badge === "other" ? author.role_custom || ROLE_LABELS.other : ROLE_LABELS[author.role_badge]}</Badge>}
                     <span className="text-[11px] text-muted">{timeAgo(c.created_at)}</span>
                   </div>
                   <p className="mt-1 text-sm leading-relaxed text-ink/85">{c.content}</p>
@@ -366,7 +367,7 @@ function EditProjectModal({
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" />
         <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Pitch (max 140)" />
         <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
-        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tag (separati da virgola)" />
+        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Categorie (separate da virgola)" />
         <Input value={roles} onChange={(e) => setRoles(e.target.value)} placeholder="Ruoli aperti (separati da virgola)" />
         <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="README (markdown)" className="font-mono text-[13px]" />
         <Button

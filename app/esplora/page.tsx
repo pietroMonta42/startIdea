@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, Search, Sparkles, Star } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ALL_TAGS } from "@/lib/data";
+import { ALL_CATEGORIES, categoryLabel } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import ProjectCard from "@/components/project-card";
 import { FeedSkeleton } from "@/components/ui";
@@ -14,18 +14,18 @@ type Sort = "top" | "comments" | "recent";
 export default function EsploraPage() {
   const { projects, hydrated, starCount, commentsFor } = useStore();
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState("Tutte");
+  const [category, setCategory] = useState("Tutte");
   const [sort, setSort] = useState<Sort>("top");
 
   const tags = useMemo(() => {
     const used = new Set(projects.flatMap((p) => p.tags));
-    return ["Tutte", ...ALL_TAGS.filter((t) => used.has(t))];
+    return ["Tutte", ...ALL_CATEGORIES.filter((t) => used.has(t))];
   }, [projects]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = projects.filter((p) => {
-      const matchTag = tag === "Tutte" || p.tags.includes(tag);
+      const matchCategory = category === "Tutte" || p.tags.includes(category);
       const matchQuery =
         !q ||
         p.title.toLowerCase().includes(q) ||
@@ -33,7 +33,7 @@ export default function EsploraPage() {
         p.location.toLowerCase().includes(q) ||
         p.open_roles.some((r) => r.toLowerCase().includes(q)) ||
         p.tags.some((t) => t.toLowerCase().includes(q));
-      return matchTag && matchQuery;
+      return matchCategory && matchQuery;
     });
     list = [...list].sort((a, b) => {
       if (sort === "recent") return +new Date(b.created_at) - +new Date(a.created_at);
@@ -41,7 +41,7 @@ export default function EsploraPage() {
       return starCount(b) - starCount(a);
     });
     return list;
-  }, [projects, query, tag, sort, starCount, commentsFor]);
+  }, [projects, query, category, sort, starCount, commentsFor]);
 
   const featured = useMemo(
     () => [...projects].sort((a, b) => starCount(b) - starCount(a)).slice(0, 3),
@@ -57,7 +57,7 @@ export default function EsploraPage() {
     { id: "recent", label: "Recenti", icon: Sparkles },
   ];
 
-  const filtering = query.trim() || tag !== "Tutte";
+  const filtering = query.trim() || category !== "Tutte";
 
   return (
     <div className="flex flex-col gap-5">
@@ -67,7 +67,7 @@ export default function EsploraPage() {
           <Sparkles className="h-3.5 w-3.5" />
           Esplora
         </div>
-        <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink">Le idee della community</h1>
+        <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink">Le idee della comunità</h1>
         <p className="mt-1 text-sm text-muted">
           {projects.length} startup · ordina per stelle, commenti o data
         </p>
@@ -104,20 +104,20 @@ export default function EsploraPage() {
         ))}
       </motion.div>
 
-      {/* Tag chips */}
+       {/* Categorie */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.16 }} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
         {tags.map((t) => (
           <button
             key={t}
-            onClick={() => setTag(t)}
+            onClick={() => setCategory(t)}
             className={cn(
               "shrink-0 cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition-all",
-              tag === t
+              category === t
                 ? "border-brand-500 bg-brand-500 text-white"
                 : "border-line bg-surface text-muted hover:text-ink"
             )}
           >
-            {t}
+            {categoryLabel(t)}
           </button>
         ))}
       </motion.div>
@@ -126,14 +126,14 @@ export default function EsploraPage() {
       {filtering && (
         <div className="flex items-center justify-between px-1">
           <p className="text-xs font-semibold text-muted">
-            {filtered.length} risultat{filtered.length === 1 ? "o" : "i"} per{" "}
-            {tag !== "Tutte" ? `#${tag}` : `"${query.trim()}"`}
+             {filtered.length} risultat{filtered.length === 1 ? "o" : "i"} per{" "}
+             {category !== "Tutte" ? categoryLabel(category) : `"${query.trim()}"`}
           </p>
           <button
-            onClick={() => { setQuery(""); setTag("Tutte"); setSort("top"); }}
+             onClick={() => { setQuery(""); setCategory("Tutte"); setSort("top"); }}
             className="text-xs font-bold text-brand-600 transition-colors hover:text-brand-500 dark:text-brand-400"
           >
-            Reset filtri
+             Azzera filtri
           </button>
         </div>
       )}

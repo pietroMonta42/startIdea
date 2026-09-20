@@ -49,7 +49,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 }
 
 const NAV = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/", label: "Inizio", icon: Home },
   { href: "/esplora", label: "Esplora", icon: Compass },
   { href: "/profilo", label: "Profilo", icon: User },
 ];
@@ -105,7 +105,7 @@ function SideNav() {
               <Avatar name={user.full_name} size="sm" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ink">{user.full_name.split(" ")[0]}</p>
-                <p className="text-xs text-muted">Online</p>
+                <p className="text-xs text-muted">Connesso</p>
               </div>
             </div>
           ) : (

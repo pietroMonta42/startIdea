@@ -24,9 +24,9 @@ interface Store {
   applications: Application[];
   // auth
   signInOAuth: (provider: "github" | "google") => Promise<void>;
-  signInOtp: (email: string, meta: { full_name: string; role: RoleBadge; university: string }) => Promise<void>;
+  signInOtp: (email: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string }) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
   setAvailability: (a: Availability) => void;
@@ -69,10 +69,12 @@ function profileFromRow(row: Record<string, unknown>): Profile {
     full_name: row.full_name as string,
     avatar_url: (row.avatar_url as string | null) ?? null,
     role_badge: row.role_badge as RoleBadge,
+    role_custom: (row.role_custom as string | undefined) ?? undefined,
     skills: (row.skills as string[]) ?? [],
     bio: (row.bio as string | null) ?? null,
     availability: row.availability as Availability,
     university: (row.university as string | undefined) ?? undefined,
+    profile_color: (row.profile_color as string | undefined) ?? "#f97316",
     is_admin: (row.is_admin as boolean | undefined) ?? false,
     created_at: row.created_at as string,
   };
@@ -140,6 +142,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: u.id,
         full_name: meta.full_name ?? meta.name ?? u.email?.split("@")[0] ?? "Nuovo utente",
         role_badge: (meta.role_badge as RoleBadge) ?? "tech_dev",
+        role_custom: (meta.role_custom as string | undefined) ?? null,
         university: meta.university ?? null,
       });
       ({ data: profRow } = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle());
@@ -174,9 +177,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt: AuthChangeEvent, s: Session | null) => {
       setSession(s);
-      if (s?.user) loadUserData(s.user).finally(() => setHydrated(true));
+      if (s?.user) {
+        // Do not render the previous profile while the new account is loading.
+        setUser((previous) => previous?.id === s.user.id ? previous : null);
+        setIsAdmin(false);
+        setStarredIds([]);
+        setApplications([]);
+        loadUserData(s.user).finally(() => setHydrated(true));
+      }
       else {
         setUser(null);
+        setIsAdmin(false);
         setStarredIds([]);
         setApplications([]);
       }
@@ -207,12 +218,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error) toast(error.message);
   }, [toast]);
 
-  const signInOtp = useCallback(async (email: string, meta: { full_name: string; role: RoleBadge; university: string }) => {
+  const signInOtp = useCallback(async (email: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => {
+    // Un magic link deve poter cambiare account anche se il browser ha una sessione precedente.
+    await supabase.auth.signOut({ scope: "local" });
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=/profilo`,
-        data: { full_name: meta.full_name, role_badge: meta.role, university: meta.university },
+        data: { full_name: meta.full_name, role_badge: meta.role, role_custom: meta.role_custom, university: meta.university },
       },
     });
     if (error) toast(error.message);
@@ -224,13 +237,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error) toast(error.message);
   }, [toast]);
 
-  const signUpWithEmail = useCallback(async (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string }) => {
+  const signUpWithEmail = useCallback(async (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=/profilo`,
-        data: { full_name: meta.full_name, role_badge: meta.role, university: meta.university },
+        data: { full_name: meta.full_name, role_badge: meta.role, role_custom: meta.role_custom, university: meta.university },
       },
     });
     if (error) toast(error.message);
