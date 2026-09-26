@@ -13,7 +13,7 @@ const STEPS = [
   {
     icon: Lightbulb,
     title: "Pubblica l'idea",
-    text: "Scrivi il pitch in 140 caratteri, aggiungi un README e i ruoli che cerchi. Niente pitch deck, niente formalità.",
+    text: "Scrivi il pitch in 140 caratteri, aggiungi una Vision e i ruoli che cerchi. Niente pitch deck, niente formalità.",
   },
   {
     icon: Star,

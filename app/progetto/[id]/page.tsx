@@ -4,11 +4,11 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUp, BriefcaseBusiness, Check, FileText, MapPin, Pencil, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ArrowUp, BriefcaseBusiness, Check, ExternalLink, FileText, MapPin, Pencil, Trash2, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Project, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
 import { categoryLabel } from "@/lib/data";
-import { cn, gradientStyle, scrimStyle, timeAgo } from "@/lib/utils";
+import { cn, gradientStyle, normalizeExternalUrl, scrimStyle, timeAgo } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { StarButton } from "@/components/project-card";
 import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
@@ -103,6 +103,16 @@ export default function ProjectPage() {
           <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white">
             <MapPin className="h-4 w-4" /> {project.location} · {timeAgo(project.created_at)}
           </div>
+          {project.link && (
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/25"
+            >
+              <ExternalLink className="h-4 w-4" /> Visita il progetto
+            </a>
+          )}
         </div>
       </motion.section>
 
@@ -187,7 +197,7 @@ export default function ProjectPage() {
         </section>
       )}
 
-      {/* README */}
+      {/* Vision */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -196,7 +206,7 @@ export default function ProjectPage() {
       >
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-brand-500" />
-          <h2 className="font-display text-lg font-bold text-ink">README</h2>
+          <h2 className="font-display text-lg font-bold text-ink">Vision</h2>
         </div>
         <div className="mt-2 border-t border-line pt-2">
           <Markdown>{project.readme_markdown}</Markdown>
@@ -341,11 +351,12 @@ function EditProjectModal({
   open: boolean;
   onClose: () => void;
   project: Project;
-  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location">>) => Promise<void>;
+  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link">>) => Promise<void>;
 }) {
   const [title, setTitle] = useState(project.title);
   const [pitch, setPitch] = useState(project.short_pitch);
   const [location, setLocation] = useState(project.location);
+  const [link, setLink] = useState(project.link ?? "");
   const [readme, setReadme] = useState(project.readme_markdown);
   const [roles, setRoles] = useState(project.open_roles.join(", "));
   const [tags, setTags] = useState(project.tags.join(", "));
@@ -355,6 +366,7 @@ function EditProjectModal({
       setTitle(project.title);
       setPitch(project.short_pitch);
       setLocation(project.location);
+      setLink(project.link ?? "");
       setReadme(project.readme_markdown);
       setRoles(project.open_roles.join(", "));
       setTags(project.tags.join(", "));
@@ -367,9 +379,10 @@ function EditProjectModal({
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" />
         <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Pitch (max 140)" />
         <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
+        <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link del progetto (facoltativo)" type="url" />
         <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Categorie (separate da virgola)" />
         <Input value={roles} onChange={(e) => setRoles(e.target.value)} placeholder="Ruoli aperti (separati da virgola)" />
-        <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="README (markdown)" className="font-mono text-[13px]" />
+        <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="Vision (Markdown)" className="font-mono text-[13px]" />
         <Button
           size="lg"
           onClick={async () => {
@@ -377,6 +390,7 @@ function EditProjectModal({
               title: title.trim() || project.title,
               short_pitch: pitch.trim(),
               location: location.trim(),
+              link: link.trim() ? normalizeExternalUrl(link) : null,
               tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
               open_roles: roles.split(",").map((r) => r.trim()).filter(Boolean),
               readme_markdown: readme,

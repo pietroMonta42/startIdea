@@ -68,6 +68,7 @@ create table if not exists public.projects (
   open_roles text[] not null default '{}',
   tags text[] not null default '{}',
   location text not null default '',
+  link text,
   theme integer not null default 0,
   stars_count integer not null default 0,
   created_at timestamptz not null default now()
@@ -78,6 +79,7 @@ create index if not exists projects_stars_idx on public.projects (stars_count de
 
 -- Aggiunge la colonna theme anche se la tabella esiste già (vecchio schema)
 alter table public.projects add column if not exists theme integer not null default 0;
+alter table public.projects add column if not exists link text;
 
 -- ------------------------------------------------------------
 -- PROJECT_STARS (PK composita)

@@ -32,7 +32,7 @@ interface Store {
   setAvailability: (a: Availability) => void;
   // projects
   addProject: (p: Omit<Project, "id" | "owner_id" | "stars_count" | "created_at">) => Promise<string | null>;
-  updateProject: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location">>) => Promise<void>;
+  updateProject: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link">>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   // social
   toggleStar: (projectId: string) => void;
@@ -90,6 +90,7 @@ function projectFromRow(row: Record<string, unknown>): Project {
     open_roles: (row.open_roles as string[]) ?? [],
     tags: (row.tags as string[]) ?? [],
     location: (row.location as string) ?? "",
+    link: (row.link as string | null) ?? null,
     stars_count: (row.stars_count as number) ?? 0,
     theme: typeof row.theme === "number" ? (row.theme as number) : undefined,
     created_at: row.created_at as string,
@@ -281,6 +282,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       open_roles: p.open_roles,
       tags: p.tags,
       location: p.location,
+      link: p.link ?? null,
       theme: p.theme,
     }).select().single();
     if (error || !data) { toast(error?.message ?? "Errore"); return null; }
@@ -288,7 +290,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return data.id as string;
   }, [session, toast]);
 
-  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location">>) => {
+  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link">>) => {
     const { error } = await supabase.from("projects").update(patch).eq("id", id);
     if (error) return toast(error.message);
     setDbProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));

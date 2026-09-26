@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Lightbulb, MapPin, Plus, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ALL_CATEGORIES, categoryLabel } from "@/lib/data";
-import { cn, gradientStyle, PROJECT_STYLES } from "@/lib/utils";
+import { cn, gradientStyle, normalizeExternalUrl, PROJECT_STYLES } from "@/lib/utils";
 import Markdown from "@/components/markdown";
 import { Badge, Button, FeedSkeleton, Input, Textarea } from "@/components/ui";
 
@@ -38,6 +38,7 @@ export default function NuovoPage() {
   const [title, setTitle] = useState("");
   const [pitch, setPitch] = useState("");
   const [location, setLocation] = useState("");
+  const [link, setLink] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [roleInput, setRoleInput] = useState("");
@@ -85,6 +86,7 @@ export default function NuovoPage() {
       title: title.trim(),
       short_pitch: pitch.trim(),
       location: location.trim(),
+      link: link.trim() ? normalizeExternalUrl(link) : null,
       tags: categories,
       open_roles: roles,
       readme_markdown: readme,
@@ -138,6 +140,11 @@ export default function NuovoPage() {
             <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Es. Bologna" className="pl-10" maxLength={30} />
           </div>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Link del progetto (facoltativo)</span>
+          <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Es. https://esempio.it" type="url" />
         </label>
 
         {/* Stile visuale */}
@@ -210,10 +217,10 @@ export default function NuovoPage() {
           )}
         </div>
 
-        {/* README */}
+        {/* Vision */}
         <div>
           <span className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted">
-            README del progetto (Markdown)
+            Vision del progetto (Markdown)
             <button onClick={() => setPreview(!preview)} className="flex cursor-pointer items-center gap-1 font-semibold normal-case tracking-normal text-brand-600 dark:text-brand-400">
               {preview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {preview ? "Modifica" : "Anteprima"}

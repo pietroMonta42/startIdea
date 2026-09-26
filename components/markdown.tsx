@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 
 export default function Markdown({ children }: { children: string }) {
   return (
-    <div className="text-[15px] leading-relaxed text-ink/90">
+    <div className="min-w-0 break-words text-[15px] leading-relaxed text-ink/90 [overflow-wrap:anywhere]">
       <ReactMarkdown
         components={{
           h1: (p) => <h1 className="mt-6 mb-2 font-display text-2xl font-bold text-ink" {...p} />,
@@ -18,7 +18,7 @@ export default function Markdown({ children }: { children: string }) {
           a: (p) => (
             <a className="font-semibold text-brand-600 underline decoration-brand-500/40 underline-offset-2 dark:text-brand-400" target="_blank" rel="noreferrer" {...p} />
           ),
-          code: (p) => <code className="rounded-md bg-line/70 px-1.5 py-0.5 font-mono text-[13px] text-ink" {...p} />,
+          code: (p) => <code className="break-words rounded-md bg-line/70 px-1.5 py-0.5 font-mono text-[13px] text-ink [overflow-wrap:anywhere]" {...p} />,
           blockquote: (p) => (
             <blockquote className="my-3 border-l-3 border-brand-500 pl-4 italic text-muted" {...p} />
           ),
