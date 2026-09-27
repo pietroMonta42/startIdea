@@ -36,6 +36,8 @@ lib/store.tsx (AppProvider → useStore)
   │     ├── applications (mine + received on my projects; contact data is visible only to applicant and owner)
   │     ├── founderResources (RLS: published resources for users with active projects; all for admins)
   │     └── founderRequests (own requests; all requests for admins)
+  │
+  ├── Local-only data
   │     └── localStarIds (ephemeral stars on demo projects, localStorage)
   │
   ├── Demo data (gated by NEXT_PUBLIC_DEMO_MODE)
@@ -77,8 +79,8 @@ lib/store.tsx (AppProvider → useStore)
 | `addApplication(id, role, msg, contact)` | → Promise<boolean> | Auth required, not on demo; requires at least one consented contact method |
 | `updateApplicationStatus(id, status)` | → Promise<void> | Project owner; only status and timestamp can be updated |
 | `submitFounderRequest(request)` | → Promise<boolean> | Auth required; request must reference user's active project and include consent/contact |
-| `createFounderResource(resource)` / `updateFounderResource(id, patch)` | → Promise<void> | Admin only by RLS |
-| `updateFounderRequest(id, patch)` | → Promise<void> | Admin only by RLS |
+| `createFounderResource(resource)` / `updateFounderResource(id, patch)` | → Promise<boolean> | Admin only by RLS |
+| `updateFounderRequest(id, patch)` | → Promise<boolean> | Admin only by RLS |
 | `updateProfile(patch)` | → Promise<void> | RLS: own profile only; supports role_custom, profile_color and optional university/context |
 | `signInOAuth(provider)` | → Promise<void> | — (UI buttons removed; needs Supabase provider config) |
 | `signInOtp(email, meta)` | → Promise<void> | — (built-in SMTP: max 2 emails/hour) |

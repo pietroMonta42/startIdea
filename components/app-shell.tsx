@@ -197,7 +197,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, authReady } = useStore();
-  const publicWithoutNavigation = pathname === "/" || pathname === "/esplora";
+  const publicWithoutNavigation = pathname === "/" || (pathname === "/esplora" && !user);
   useEffect(() => {
     if (!authReady) return;
     if (user && pathname === "/") router.replace("/home");
