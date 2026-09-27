@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { MapPin, MessageCircle, Star } from "lucide-react";
+import { ExternalLink, MapPin, MessageCircle, Star } from "lucide-react";
 import { Project } from "@/lib/types";
 import { categoryLabel } from "@/lib/data";
 import { useStore } from "@/lib/store";
@@ -83,10 +83,11 @@ export default function ProjectCard({ project, index = 0 }: { project: Project; 
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-display text-[15px] font-bold text-ink">{project.title}</h3>
+            <h3 className="min-w-0 flex-1 truncate font-display text-[15px] font-bold text-ink">{project.title}</h3>
             {Date.now() - +new Date(project.created_at) < 7 * 864e5 && (
               <Badge className="bg-brand-500 text-white">NUOVO</Badge>
             )}
+            <Badge className="bg-violet-500/10 text-violet-600 dark:text-violet-400">{project.stage === "launch" ? "LANCIO" : "IDEA"}</Badge>
           </div>
           <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
             <MapPin className="h-3 w-3 shrink-0" />
@@ -115,6 +116,19 @@ export default function ProjectCard({ project, index = 0 }: { project: Project; 
       {/* Body */}
       <div className="p-4 pt-3">
         <p className="line-clamp-2 text-sm leading-relaxed text-muted">{project.short_pitch}</p>
+
+        {project.link && (
+          <a
+            href={project.link}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-3 flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-brand-600 transition-colors hover:text-brand-500 dark:text-brand-400"
+          >
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Visita il progetto</span>
+          </a>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {project.tags.map((t) => (

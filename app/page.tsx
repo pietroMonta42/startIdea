@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Compass, Flame, GitBranch, Lightbulb, MessageCircle, Sparkles, Star, TrendingUp, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -34,12 +33,7 @@ const VALUES = [
 ];
 
 export default function HomePage() {
-  const { user, authReady, projects, starCount, commentsFor, profiles } = useStore();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (authReady && user) router.replace("/esplora");
-  }, [authReady, user, router]);
+  const { projects, starCount, commentsFor, profiles } = useStore();
 
   const stats = useMemo(() => {
     const totalStars = projects.reduce((acc, p) => acc + starCount(p), 0);

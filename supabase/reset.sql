@@ -10,14 +10,19 @@
 -- Drop triggers
 drop trigger if exists on_auth_user_created on auth.users;
 drop trigger if exists project_stars_sync on public.project_stars;
+drop trigger if exists applications_require_contact on public.applications;
 
 -- Drop functions
 drop function if exists public.handle_new_user() cascade;
 drop function if exists public.sync_stars_count() cascade;
+drop function if exists public.validate_application_contact() cascade;
+drop function if exists public.protect_admin_flag() cascade;
 drop function if exists public.is_admin(uuid) cascade;
 
 -- Drop tables (l'ordine cascade gestisce le dipendenze)
 drop table if exists public.applications cascade;
+drop table if exists public.founder_requests cascade;
+drop table if exists public.founder_resources cascade;
 drop table if exists public.project_comments cascade;
 drop table if exists public.project_stars cascade;
 drop table if exists public.projects cascade;

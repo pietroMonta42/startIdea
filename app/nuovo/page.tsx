@@ -39,6 +39,7 @@ export default function NuovoPage() {
   const [pitch, setPitch] = useState("");
   const [location, setLocation] = useState("");
   const [link, setLink] = useState("");
+  const [stage, setStage] = useState<"idea" | "launch">("idea");
   const [categories, setCategories] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [roleInput, setRoleInput] = useState("");
@@ -87,6 +88,7 @@ export default function NuovoPage() {
       short_pitch: pitch.trim(),
       location: location.trim(),
       link: link.trim() ? normalizeExternalUrl(link) : null,
+      stage,
       tags: categories,
       open_roles: roles,
       readme_markdown: readme,
@@ -145,6 +147,14 @@ export default function NuovoPage() {
         <label className="block">
           <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Link del progetto (facoltativo)</span>
           <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Es. https://esempio.it" type="url" />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Fase del progetto</span>
+          <select value={stage} onChange={(e) => setStage(e.target.value as "idea" | "launch")} className="h-11 w-full rounded-2xl border border-line bg-bg px-4 text-sm text-ink">
+            <option value="idea">Idea</option>
+            <option value="launch">Lancio</option>
+          </select>
         </label>
 
         {/* Stile visuale */}

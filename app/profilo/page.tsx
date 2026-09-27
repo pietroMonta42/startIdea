@@ -376,6 +376,7 @@ function ProfileView() {
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-brand-500" />
             <h2 className="font-display text-lg font-bold text-ink">Amministratore · GDPR e riservatezza</h2>
+            <Link href="/amministrazione" className="ml-auto text-xs font-bold text-brand-600 dark:text-brand-400">Gestisci Founder →</Link>
           </div>
           <p className="mt-1 text-xs text-muted">Gestione account e contenuti secondo il regolamento UE. L&apos;eliminazione qui cancella profilo, progetti, commenti e candidature collegati. Per rimuovere definitivamente l&apos;utente auth, esegui in SQL Editor: <code className="rounded bg-line/70 px-1 py-0.5 text-[11px]">delete from auth.users where id=&apos;&lt;id&gt;&apos;;</code></p>
           <div className="mt-4 flex flex-col gap-2.5">

@@ -16,12 +16,15 @@ import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/c
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const store = useStore();
-  const { authReady, projectById, profileById, commentsFor, addComment, user, toast, applicationsFor, myApplication, addApplication, isAdmin, deleteProject, updateProject, isDemoProject } = store;
+  const { authReady, projectById, profileById, commentsFor, addComment, user, session, toast, applicationsFor, myApplication, addApplication, isAdmin, deleteProject, updateProject, isDemoProject } = store;
 
   const [comment, setComment] = useState("");
   const [applyOpen, setApplyOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactConsent, setContactConsent] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -32,8 +35,8 @@ export default function ProjectPage() {
     return (
       <div className="flex flex-col items-center gap-4 py-24 text-center">
         <p className="font-display text-xl font-bold text-ink">Progetto non trovato</p>
-        <Link href="/" className="font-semibold text-brand-600 dark:text-brand-400">
-          ← Torna all&apos;inizio
+        <Link href="/esplora" className="font-semibold text-brand-600 dark:text-brand-400">
+          ← Torna a Esplora
         </Link>
       </div>
     );
@@ -52,19 +55,25 @@ export default function ProjectPage() {
     setComment("");
   };
 
-  const submitApplication = () => {
+  const submitApplication = async () => {
     if (!role) return toast("Scegli un ruolo");
     if (message.trim().length < 10) return toast("Scrivi un mini-pitch di almeno 10 caratteri");
-    addApplication(project.id, role, message.trim());
+    if (!contactEmail.trim() && !contactPhone.trim()) return toast("Inserisci un indirizzo email o un numero di telefono");
+    if (contactEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) return toast("Controlla l’indirizzo email");
+    if (!contactConsent) return toast("Conferma la condivisione dei recapiti con chi ha pubblicato il progetto");
+    const submitted = await addApplication(project.id, role, message.trim(), { email: contactEmail, phone: contactPhone, consent: contactConsent });
+    if (!submitted) return;
     setApplyOpen(false);
     setRole(null);
     setMessage("");
-    toast("Candidatura inviata al founder");
+    setContactEmail("");
+    setContactPhone("");
+    setContactConsent(false);
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-muted transition-colors hover:text-ink">
+      <Link href="/esplora" className="flex w-fit items-center gap-1.5 text-sm font-semibold text-muted transition-colors hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> Indietro
       </Link>
 
@@ -86,6 +95,7 @@ export default function ProjectPage() {
         <span className="pointer-events-none absolute inset-0" style={scrimStyle()} />
 
         <div className="relative flex flex-wrap items-center gap-2">
+            <Badge className="bg-white/20 text-white backdrop-blur-sm">{project.stage === "launch" ? "Lancio" : "Idea"}</Badge>
             {project.tags.map((t) => (
               <Badge key={t} className="bg-white/20 text-white backdrop-blur-sm">{categoryLabel(t)}</Badge>
           ))}
@@ -115,6 +125,23 @@ export default function ProjectPage() {
           )}
         </div>
       </motion.section>
+
+      {project.link && (
+        <section className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <ExternalLink className="h-5 w-5 text-brand-500" />
+            <h2 className="font-display text-lg font-bold text-ink">Link del progetto</h2>
+          </div>
+          <a
+            href={project.link}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 block truncate rounded-2xl border border-line bg-bg px-4 py-3 text-sm font-semibold text-brand-600 underline underline-offset-2 transition-colors hover:text-brand-500 dark:text-brand-400"
+          >
+            {project.link}
+          </a>
+        </section>
+      )}
 
       {/* Ruoli aperti */}
       <motion.section
@@ -150,12 +177,15 @@ export default function ProjectPage() {
             <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
               <Check className="h-4.5 w-4.5" /> Ti sei candidato come {mine.target_role} · in attesa di risposta
             </div>
+          ) : !user ? (
+            <Link href="/profilo"><Button size="lg" className="w-full sm:w-auto">Accedi per candidarti</Button></Link>
           ) : (
             <Button
               size="lg"
               className="w-full sm:w-auto"
               onClick={() => {
-                if (!user) return toast("Accedi dal tab Profilo per candidarti");
+                if (!user) return toast("Accedi per candidarti");
+                setContactEmail(session?.user.email ?? "");
                 setApplyOpen(true);
               }}
             >
@@ -296,7 +326,7 @@ export default function ProjectPage() {
       {/* Apply modal */}
       <Modal open={applyOpen} onClose={() => setApplyOpen(false)} title={`Candidati per ${project.title}`}>
         <p className="text-sm text-muted">
-          Il founder vedrà il tuo profilo e questo messaggio. Niente CV formali: conta quello che sai fare.
+          Chi ha pubblicato il progetto vedrà il tuo profilo, il messaggio e il recapito che scegli di condividere.
         </p>
         <p className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted">Per quale ruolo?</p>
         <div className="flex flex-wrap gap-2">
@@ -322,6 +352,13 @@ export default function ProjectPage() {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Chi sei, cosa hai già costruito, perché questa idea ti gasa…"
         />
+        <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted">Come possiamo ricontattarti? Inserisci almeno un recapito.</p>
+        <Input type="email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} placeholder="Email" autoComplete="email" />
+        <Input type="tel" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} placeholder="Numero di telefono" autoComplete="tel" />
+        <label className="mt-1 flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted">
+          <input type="checkbox" checked={contactConsent} onChange={(event) => setContactConsent(event.target.checked)} className="mt-0.5 accent-brand-500" />
+          <span>Acconsento a condividere il recapito inserito con chi ha pubblicato il progetto per essere ricontattato in merito alla candidatura.</span>
+        </label>
         <Button size="lg" className="mt-4 w-full" onClick={submitApplication}>
           Invia candidatura
         </Button>
@@ -335,7 +372,7 @@ export default function ProjectPage() {
         <p className="text-sm text-muted">Questa azione è irreversibile: il progetto, i suoi commenti e le candidature verranno rimossi.</p>
         <div className="mt-4 flex gap-2">
           <Button variant="secondary" className="flex-1" onClick={() => setConfirmDelete(false)}>Annulla</Button>
-          <Button variant="dark" className="flex-1 bg-red-500 hover:bg-red-600" onClick={async () => { await deleteProject(project.id); setConfirmDelete(false); location.href = "/"; }}>Elimina</Button>
+          <Button variant="dark" className="flex-1 bg-red-500 hover:bg-red-600" onClick={async () => { await deleteProject(project.id); setConfirmDelete(false); location.href = "/progetti"; }}>Elimina</Button>
         </div>
       </Modal>
     </div>
@@ -351,12 +388,13 @@ function EditProjectModal({
   open: boolean;
   onClose: () => void;
   project: Project;
-  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link">>) => Promise<void>;
+  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link" | "stage">>) => Promise<void>;
 }) {
   const [title, setTitle] = useState(project.title);
   const [pitch, setPitch] = useState(project.short_pitch);
   const [location, setLocation] = useState(project.location);
   const [link, setLink] = useState(project.link ?? "");
+  const [stage, setStage] = useState<"idea" | "launch">(project.stage ?? "idea");
   const [readme, setReadme] = useState(project.readme_markdown);
   const [roles, setRoles] = useState(project.open_roles.join(", "));
   const [tags, setTags] = useState(project.tags.join(", "));
@@ -367,6 +405,7 @@ function EditProjectModal({
       setPitch(project.short_pitch);
       setLocation(project.location);
       setLink(project.link ?? "");
+      setStage(project.stage ?? "idea");
       setReadme(project.readme_markdown);
       setRoles(project.open_roles.join(", "));
       setTags(project.tags.join(", "));
@@ -380,6 +419,10 @@ function EditProjectModal({
         <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Pitch (max 140)" />
         <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
         <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link del progetto (facoltativo)" type="url" />
+        <select value={stage} onChange={(e) => setStage(e.target.value as "idea" | "launch")} className="h-11 w-full rounded-2xl border border-line bg-bg px-4 text-sm text-ink" aria-label="Fase del progetto">
+          <option value="idea">Fase: Idea</option>
+          <option value="launch">Fase: Lancio</option>
+        </select>
         <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Categorie (separate da virgola)" />
         <Input value={roles} onChange={(e) => setRoles(e.target.value)} placeholder="Ruoli aperti (separati da virgola)" />
         <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="Vision (Markdown)" className="font-mono text-[13px]" />
@@ -391,6 +434,7 @@ function EditProjectModal({
               short_pitch: pitch.trim(),
               location: location.trim(),
               link: link.trim() ? normalizeExternalUrl(link) : null,
+              stage,
               tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
               open_roles: roles.split(",").map((r) => r.trim()).filter(Boolean),
               readme_markdown: readme,

@@ -27,7 +27,7 @@ High-level navigation map for AI agents.
 
 | Layer | Primary pages |
 |-------|---------------|
-| Frontend (Next.js App Router) | `app/` pages: `/` landing (redirect→`/esplora` if logged in), `/esplora` feed, `/nuovo`, `/profilo`, `/progetto/[id]` |
+| Frontend (Next.js App Router) | Public `/` landing and `/esplora` (no full navigation); authenticated `/home`, `/founder`, `/progetti`, `/profilo`, `/nuovo`, `/amministrazione`, `/progetto/[id]` |
 | State & data | `lib/store.tsx`, `lib/data.ts`, `lib/supabase/` |
 | Styling | Tailwind v4 in `app/globals.css` |
 | Auth & backend | `lib/supabase/`, `proxy.ts`, `supabase/schema.sql` |

@@ -1,5 +1,8 @@
 export type RoleBadge = "tech_dev" | "design" | "marketing" | "business" | "other";
 export type Availability = "available" | "busy" | "consulting";
+export type ProjectStage = "idea" | "launch";
+export type ApplicationStatus = "pending" | "accepted" | "rejected";
+export type FounderRequestStatus = "pending" | "in_progress" | "answered" | "closed";
 
 export interface Profile {
   id: string;
@@ -27,6 +30,8 @@ export interface Project {
   stars_count: number;
   location: string;
   link?: string | null;
+  stage?: ProjectStage;
+  is_active?: boolean;
   theme?: number;
   created_at: string;
 }
@@ -45,8 +50,39 @@ export interface Application {
   applicant_id: string;
   target_role: string;
   message: string;
-  status: "pending" | "accepted" | "rejected";
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_consent?: boolean;
+  status: ApplicationStatus;
   created_at: string;
+}
+
+export interface FounderResource {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  url: string;
+  is_recommended: boolean;
+  is_published: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FounderRequest {
+  id: string;
+  user_id: string;
+  project_id: string;
+  subject: string;
+  message: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_consent: boolean;
+  status: FounderRequestStatus;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export const ROLE_LABELS: Record<RoleBadge, string> = {

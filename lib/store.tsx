@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
-import { Application, Availability, Profile, Project, ProjectComment, RoleBadge } from "./types";
+import { Application, Availability, FounderRequest, FounderResource, Profile, Project, ProjectComment, RoleBadge } from "./types";
 import { SEED_COMMENTS, SEED_PROFILES, SEED_PROJECTS } from "./data";
 import { initials, timeAgo, uid } from "./utils";
 import { supabase } from "./supabase/client";
@@ -22,6 +22,9 @@ interface Store {
   projects: Project[];
   comments: ProjectComment[];
   applications: Application[];
+  founderResources: FounderResource[];
+  founderRequests: FounderRequest[];
+  canAccessFounder: boolean;
   // auth
   signInOAuth: (provider: "github" | "google") => Promise<void>;
   signInOtp: (email: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<void>;
@@ -32,12 +35,17 @@ interface Store {
   setAvailability: (a: Availability) => void;
   // projects
   addProject: (p: Omit<Project, "id" | "owner_id" | "stars_count" | "created_at">) => Promise<string | null>;
-  updateProject: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link">>) => Promise<void>;
+  updateProject: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link" | "stage" | "is_active">>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   // social
   toggleStar: (projectId: string) => void;
   addComment: (projectId: string, content: string) => Promise<void>;
-  addApplication: (projectId: string, targetRole: string, message: string) => Promise<void>;
+  addApplication: (projectId: string, targetRole: string, message: string, contact: { email: string; phone: string; consent: boolean }) => Promise<boolean>;
+  updateApplicationStatus: (applicationId: string, status: Application["status"]) => Promise<void>;
+  createFounderResource: (resource: Omit<FounderResource, "id" | "created_at" | "updated_at">) => Promise<boolean>;
+  updateFounderResource: (id: string, patch: Partial<Omit<FounderResource, "id" | "created_at" | "updated_at">>) => Promise<boolean>;
+  submitFounderRequest: (request: Pick<FounderRequest, "project_id" | "subject" | "message" | "contact_email" | "contact_phone" | "contact_consent">) => Promise<boolean>;
+  updateFounderRequest: (id: string, patch: Pick<FounderRequest, "status" | "admin_notes">) => Promise<boolean>;
   // admin
   deleteProfileAdmin: (profileId: string) => Promise<void>;
   // selectors
@@ -91,6 +99,8 @@ function projectFromRow(row: Record<string, unknown>): Project {
     tags: (row.tags as string[]) ?? [],
     location: (row.location as string) ?? "",
     link: (row.link as string | null) ?? null,
+    stage: (row.stage as Project["stage"]) ?? "idea",
+    is_active: (row.is_active as boolean | undefined) ?? true,
     stars_count: (row.stars_count as number) ?? 0,
     theme: typeof row.theme === "number" ? (row.theme as number) : undefined,
     created_at: row.created_at as string,
@@ -107,11 +117,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dbProjects, setDbProjects] = useState<Project[]>([]);
   const [comments, setComments] = useState<ProjectComment[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [founderResources, setFounderResources] = useState<FounderResource[]>([]);
+  const [founderRequests, setFounderRequests] = useState<FounderRequest[]>([]);
   const [starredIds, setStarredIds] = useState<string[]>([]);
   const [localStarIds, setLocalStarIds] = useState<string[]>([]);
   const [toasts, setToasts] = useState<{ id: string; msg: string }[]>([]);
 
   const projects = useMemo<Project[]>(() => [...SEED_PROJECTS_VISIBLE, ...dbProjects], [dbProjects]);
+  const canAccessFounder = Boolean(user && dbProjects.some((project) => project.owner_id === user.id && project.is_active !== false));
   const isDemoProject = useCallback((id: string) => id.startsWith("pr-") && !dbProjects.some((p) => p.id === id), [dbProjects]);
 
   const toast = useCallback((msg: string) => {
@@ -152,12 +165,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUser(prof);
     setIsAdmin(Boolean(prof?.is_admin));
 
-    const [starRes, appsRes] = await Promise.all([
+    const [starRes, ownedProjectsRes, ownAppsRes, resourcesRes, requestsRes] = await Promise.all([
       supabase.from("project_stars").select("project_id").eq("user_id", u.id),
-      supabase.from("applications").select("*").or(`applicant_id.eq.${u.id}`),
+      supabase.from("projects").select("id").eq("owner_id", u.id),
+      supabase.from("applications").select("*").eq("applicant_id", u.id),
+      supabase.from("founder_resources").select("*").order("sort_order").order("created_at", { ascending: false }),
+      supabase.from("founder_requests").select("*").order("created_at", { ascending: false }),
     ]);
+    const ownedProjectIds = (ownedProjectsRes.data ?? []).map((row) => row.id as string);
+    const receivedAppsRes = ownedProjectIds.length
+      ? await supabase.from("applications").select("*").in("project_id", ownedProjectIds)
+      : { data: [], error: null };
+    const combinedApplications = new Map<string, Application>();
+    for (const row of [...(ownAppsRes.data ?? []), ...(receivedAppsRes.data ?? [])]) {
+      combinedApplications.set(row.id as string, row as unknown as Application);
+    }
     setStarredIds((starRes.data ?? []).map((r) => (r as Record<string, string>).project_id));
-    setApplications(appsRes.data as unknown as Application[] ?? []);
+    setApplications([...combinedApplications.values()]);
+    setFounderResources((resourcesRes.data ?? []) as unknown as FounderResource[]);
+    setFounderRequests((requestsRes.data ?? []) as unknown as FounderRequest[]);
   }, []);
 
   /* ---- auth bootstrap ---- */
@@ -181,16 +207,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (s?.user) {
         // Do not render the previous profile while the new account is loading.
         setUser((previous) => previous?.id === s.user.id ? previous : null);
+        setDbProjects([]);
+        loadPublic();
         setIsAdmin(false);
         setStarredIds([]);
         setApplications([]);
+        setFounderResources([]);
+        setFounderRequests([]);
         loadUserData(s.user).finally(() => setHydrated(true));
       }
       else {
         setUser(null);
+        setDbProjects([]);
+        loadPublic();
         setIsAdmin(false);
         setStarredIds([]);
         setApplications([]);
+        setFounderResources([]);
+        setFounderRequests([]);
       }
     });
 
@@ -255,10 +289,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    setDbProjects([]);
+    loadPublic();
     setStarredIds([]);
     setApplications([]);
+    setFounderResources([]);
+    setFounderRequests([]);
     setIsAdmin(false);
-  }, []);
+  }, [loadPublic]);
 
   const updateProfile = useCallback(async (patch: Partial<Profile>) => {
     if (!session?.user) return;
@@ -283,19 +321,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       tags: p.tags,
       location: p.location,
       link: p.link ?? null,
+      stage: p.stage ?? "idea",
+      is_active: p.is_active ?? true,
       theme: p.theme,
     }).select().single();
     if (error || !data) { toast(error?.message ?? "Errore"); return null; }
     setDbProjects((prev) => [projectFromRow(data), ...prev]);
+    const { data: resources } = await supabase.from("founder_resources").select("*").order("sort_order").order("created_at", { ascending: false });
+    setFounderResources((resources ?? []) as unknown as FounderResource[]);
     return data.id as string;
   }, [session, toast]);
 
-  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link">>) => {
+  const updateProject = useCallback(async (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link" | "stage" | "is_active">>) => {
     const { error } = await supabase.from("projects").update(patch).eq("id", id);
     if (error) return toast(error.message);
-    setDbProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    const updatedProjects = projects.map((project) => project.id === id ? { ...project, ...patch } : project);
+    setDbProjects((prev) => prev.map((project) => (project.id === id ? { ...project, ...patch } : project)));
+    if (session?.user && !updatedProjects.some((project) => project.owner_id === session.user!.id && project.is_active !== false)) {
+      setFounderResources([]);
+    } else if (session?.user && patch.is_active === true) {
+      const { data: resources } = await supabase.from("founder_resources").select("*").order("sort_order").order("created_at", { ascending: false });
+      setFounderResources((resources ?? []) as unknown as FounderResource[]);
+    }
     toast("Progetto aggiornato");
-  }, [toast]);
+  }, [projects, session, toast]);
 
   const deleteProject = useCallback(async (id: string) => {
     const { error } = await supabase.from("projects").delete().eq("id", id);
@@ -340,22 +389,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setComments((prev) => [...prev, data as unknown as ProjectComment]);
   }, [session, isDemoProject, toast]);
 
-  const addApplication = useCallback(async (projectId: string, targetRole: string, message: string) => {
-    if (!session?.user) return toast("Accedi per candidarti");
-    if (isDemoProject(projectId)) return toast("Non puoi candidarti su un progetto demo");
+  const addApplication = useCallback(async (projectId: string, targetRole: string, message: string, contact: { email: string; phone: string; consent: boolean }) => {
+    if (!session?.user) { toast("Accedi per candidarti"); return false; }
+    if (isDemoProject(projectId)) { toast("Non puoi candidarti su un progetto demo"); return false; }
     const { data, error } = await supabase.from("applications").insert({
       project_id: projectId,
       applicant_id: session.user.id,
       target_role: targetRole,
       message,
+      contact_email: contact.email.trim() || null,
+      contact_phone: contact.phone.trim() || null,
+      contact_consent: contact.consent,
     }).select().single();
     if (error || !data) {
-      if (error?.code === "23505") return toast("Ti sei già candidato per questo ruolo");
-      return toast(error?.message ?? "Errore");
+      if (error?.code === "23505") toast("Ti sei già candidato per questo ruolo");
+      else toast(error?.message ?? "Errore");
+      return false;
     }
     setApplications((prev) => [...prev, data as unknown as Application]);
-    toast("Candidatura inviata al founder");
+    toast("Candidatura inviata");
+    return true;
   }, [session, isDemoProject, toast]);
+
+  const updateApplicationStatus = useCallback(async (applicationId: string, status: Application["status"]) => {
+    const { error } = await supabase.from("applications").update({ status, updated_at: new Date().toISOString() }).eq("id", applicationId);
+    if (error) return toast(error.message);
+    setApplications((prev) => prev.map((application) => application.id === applicationId ? { ...application, status } : application));
+    toast("Stato candidatura aggiornato");
+  }, [toast]);
+
+  const createFounderResource = useCallback(async (resource: Omit<FounderResource, "id" | "created_at" | "updated_at">) => {
+    const { data, error } = await supabase.from("founder_resources").insert({ ...resource, created_by: session?.user.id }).select().single();
+    if (error || !data) { toast(error?.message ?? "Impossibile salvare la risorsa"); return false; }
+    setFounderResources((prev) => [...prev, data as unknown as FounderResource].sort((a, b) => a.sort_order - b.sort_order));
+    toast("Risorsa salvata");
+    return true;
+  }, [session, toast]);
+
+  const updateFounderResource = useCallback(async (id: string, patch: Partial<Omit<FounderResource, "id" | "created_at" | "updated_at">>) => {
+    const { error } = await supabase.from("founder_resources").update(patch).eq("id", id);
+    if (error) { toast(error.message); return false; }
+    setFounderResources((prev) => prev.map((resource) => resource.id === id ? { ...resource, ...patch } : resource));
+    toast("Risorsa aggiornata");
+    return true;
+  }, [toast]);
+
+  const submitFounderRequest = useCallback(async (request: Pick<FounderRequest, "project_id" | "subject" | "message" | "contact_email" | "contact_phone" | "contact_consent">) => {
+    if (!session?.user) { toast("Accedi per inviare una richiesta"); return false; }
+    const { data, error } = await supabase.from("founder_requests").insert({ ...request, user_id: session.user.id }).select().single();
+    if (error || !data) { toast(error?.message ?? "Impossibile inviare la richiesta"); return false; }
+    setFounderRequests((prev) => [data as unknown as FounderRequest, ...prev]);
+    toast("Richiesta inviata: ti ricontatteremo");
+    return true;
+  }, [session, toast]);
+
+  const updateFounderRequest = useCallback(async (id: string, patch: Pick<FounderRequest, "status" | "admin_notes">) => {
+    const { error } = await supabase.from("founder_requests").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) { toast(error.message); return false; }
+    setFounderRequests((prev) => prev.map((request) => request.id === id ? { ...request, ...patch } : request));
+    toast("Richiesta aggiornata");
+    return true;
+  }, [toast]);
 
   const deleteProfileAdmin = useCallback(async (profileId: string) => {
     const { error } = await supabase.from("profiles").delete().eq("id", profileId);
@@ -390,17 +484,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const myApplication = useCallback((id: string) => applications.find((a) => a.project_id === id && a.applicant_id === session?.user?.id), [applications, session]);
 
   const value = useMemo<Store>(() => ({
-    authReady, hydrated, session, user, isAdmin, profiles, projects, comments, applications,
+    authReady, hydrated, session, user, isAdmin, profiles, projects, comments, applications, founderResources, founderRequests, canAccessFounder,
     signInOAuth, signInOtp, signInWithEmail, signUpWithEmail, signOut, updateProfile, setAvailability,
     addProject, updateProject, deleteProject,
-    toggleStar, addComment, addApplication,
+    toggleStar, addComment, addApplication, updateApplicationStatus,
+    createFounderResource, updateFounderResource, submitFounderRequest, updateFounderRequest,
     deleteProfileAdmin,
     hasStarred, starCount, commentsFor, applicationsFor, myApplication,
     profileById, projectById, isDemoProject, toast,
-  }), [authReady, hydrated, session, user, isAdmin, profiles, projects, comments, applications,
+  }), [authReady, hydrated, session, user, isAdmin, profiles, projects, comments, applications, founderResources, founderRequests, canAccessFounder,
     signInOAuth, signInOtp, signInWithEmail, signUpWithEmail, signOut, updateProfile, setAvailability,
     addProject, updateProject, deleteProject,
-    toggleStar, addComment, addApplication, deleteProfileAdmin,
+    toggleStar, addComment, addApplication, updateApplicationStatus,
+    createFounderResource, updateFounderResource, submitFounderRequest, updateFounderRequest, deleteProfileAdmin,
     hasStarred, starCount, commentsFor, applicationsFor, myApplication,
     profileById, projectById, isDemoProject, toast]);
 

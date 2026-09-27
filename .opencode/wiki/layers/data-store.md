@@ -28,12 +28,14 @@ lib/store.tsx (AppProvider → useStore)
   │
   ├── Public data (read by anyone)
   │     ├── profiles (from DB, all users; optional role_custom, profile_color, university/context)
-  │     ├── dbProjects (from DB, all projects)
+  │     ├── dbProjects (active projects publicly; owners can also read their archived projects)
   │     └── comments (from DB, all comments)
   │
   ├── User-scoped data (read by self + relevant owners)
   │     ├── starredIds (DB project_stars for current user)
-  │     ├── applications (mine + received on my projects)
+  │     ├── applications (mine + received on my projects; contact data is visible only to applicant and owner)
+  │     ├── founderResources (RLS: published resources for users with active projects; all for admins)
+  │     └── founderRequests (own requests; all requests for admins)
   │     └── localStarIds (ephemeral stars on demo projects, localStorage)
   │
   ├── Demo data (gated by NEXT_PUBLIC_DEMO_MODE)
@@ -54,7 +56,8 @@ lib/store.tsx (AppProvider → useStore)
 | `authReady` | boolean | Use as loading guard for auth-dependent pages |
 | `user` | Profile \| null | Current user's DB profile row |
 | `isAdmin` | boolean | From profiles.is_admin column |
-| `projects` | Project[] | Merged: demo + DB (each row carries optional `theme` int → `gradientStyle(project)`) |
+| `projects` | Project[] | Merged: demo + DB (`stage`: idea/launch, `is_active`, optional link and `theme`) |
+| `canAccessFounder` | boolean | Current user owns at least one active project |
 | `profileById(id)` | Profile \| undefined | Searches DB first, then demo map |
 | `projectById(id)` | Project \| undefined | Searches merged list |
 | `hasStarred(id)` | boolean | Checks DB stars + local ephemeral |
@@ -66,12 +69,16 @@ lib/store.tsx (AppProvider → useStore)
 
 | Action | Signature | Guard |
 |--------|-----------|-------|
-| `addProject(p)` | → Promise<string \| null> | Auth required; passes `theme` int to DB |
-| `updateProject(id, patch)` | → Promise<void> | RLS: owner or admin |
+| `addProject(p)` | → Promise<string \| null> | Auth required; persists stage, active/archive state, link and `theme` |
+| `updateProject(id, patch)` | → Promise<void> | RLS: owner or admin; supports stage and archive state |
 | `deleteProject(id)` | → Promise<void> | RLS: owner or admin |
 | `toggleStar(id)` | void | Auth for DB projects, local for demo |
 | `addComment(id, content)` | → Promise<void> | Auth required, not on demo |
-| `addApplication(id, role, msg)` | → Promise<void> | Auth required, not on demo |
+| `addApplication(id, role, msg, contact)` | → Promise<boolean> | Auth required, not on demo; requires at least one consented contact method |
+| `updateApplicationStatus(id, status)` | → Promise<void> | Project owner; only status and timestamp can be updated |
+| `submitFounderRequest(request)` | → Promise<boolean> | Auth required; request must reference user's active project and include consent/contact |
+| `createFounderResource(resource)` / `updateFounderResource(id, patch)` | → Promise<void> | Admin only by RLS |
+| `updateFounderRequest(id, patch)` | → Promise<void> | Admin only by RLS |
 | `updateProfile(patch)` | → Promise<void> | RLS: own profile only; supports role_custom, profile_color and optional university/context |
 | `signInOAuth(provider)` | → Promise<void> | — (UI buttons removed; needs Supabase provider config) |
 | `signInOtp(email, meta)` | → Promise<void> | — (built-in SMTP: max 2 emails/hour) |
@@ -87,6 +94,8 @@ Profiles store a `profile_color` hex value (default `#f97316`). The profile edit
 The merged `projects` array rows map `theme` from the DB `projects.theme` column (default 0). Projects table in `supabase/schema.sql` has `theme integer not null default 0`. `PROJECT_STYLES` in `lib/utils.ts` indexes the style (Tramonto, Fusione, Abisso, Foresta, Magma, Nebula). `gradientStyle(project)` falls back to a deterministic gradient from `project.id` when `theme` is unset (seed projects).
 
 Project `tags` remain the database field for compatibility, but the UI calls them categories. `ALL_CATEGORIES` in `lib/data.ts` includes legacy values plus Italian categories such as Casa e affitti, PropTech, Finanza personale, Dati e analisi, Risparmio and Servizi quotidiani.
+
+Projects also carry `stage` (`idea` or `launch`) and `is_active`; Explore filters inactive projects and can filter by stage. `applications` store contact email/phone and consent; RLS limits these fields to the applicant and project owner. Founder-only resource and support-request data is in `founder_resources` and `founder_requests`, guarded by active-project and admin policies.
 
 ## Supabase guard
 
