@@ -1,7 +1,11 @@
 export type RoleBadge = "tech_dev" | "design" | "marketing" | "business" | "other";
-export type Availability = "available" | "busy" | "consulting";
+export type Availability = "exploring" | "h1_5" | "h5_10" | "h10_20" | "full";
+export type LookingFor = "cofounder" | "side_project" | "collaborator" | "internship" | "exploring";
+export type RoleMode = "remote" | "onsite" | "hybrid";
+export type CollabType = "cofounder" | "equity" | "unpaid" | "paid";
+export type ConnectionStatus = "pending" | "accepted" | "declined";
 export type ProjectStage = "idea" | "launch";
-export type ApplicationStatus = "pending" | "accepted" | "rejected";
+export type ApplicationStatus = "pending" | "accepted" | "rejected" | "mutual_match";
 export type FounderRequestStatus = "pending" | "in_progress" | "answered" | "closed";
 
 export interface Profile {
@@ -13,9 +17,40 @@ export interface Profile {
   skills: string[];
   bio: string | null;
   availability: Availability;
-  university?: string;
+  university?: string | null;
+  city?: string | null;
+  looking_for?: LookingFor[];
+  /** Campi del profilo completo: presenti solo per sé, team e collegati (`is_full`). */
+  interests?: string[];
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
+  is_full?: boolean;
   profile_color?: string;
   is_admin?: boolean;
+  created_at: string;
+}
+
+export interface ProjectRole {
+  id: string;
+  project_id: string;
+  title: string;
+  skills: string[];
+  hours_per_week: number | null;
+  mode: RoleMode;
+  city: string | null;
+  collab_type: CollabType;
+  is_open: boolean;
+  created_at: string;
+}
+
+export type ProjectRoleInput = Pick<ProjectRole, "title" | "skills" | "hours_per_week" | "mode" | "city" | "collab_type">;
+
+export interface Connection {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  message: string | null;
+  status: ConnectionStatus;
   created_at: string;
 }
 
@@ -24,7 +59,12 @@ export interface Project {
   owner_id: string;
   title: string;
   short_pitch: string;
+  /** Legacy: Markdown dei progetti pubblicati prima del wizard semplificato. */
   readme_markdown: string;
+  problem?: string;
+  solution?: string;
+  progress?: string;
+  university?: string | null;
   open_roles: string[];
   tags: string[];
   stars_count: number;
@@ -34,6 +74,8 @@ export interface Project {
   is_active?: boolean;
   theme?: number;
   created_at: string;
+  /** Ultima modifica ai contenuti del progetto (non commenti/candidature). Fallback: created_at. */
+  updated_at?: string;
 }
 
 export interface ProjectComment {
@@ -47,6 +89,7 @@ export interface ProjectComment {
 export interface Application {
   id: string;
   project_id: string;
+  role_id?: string | null;
   applicant_id: string;
   target_role: string;
   message: string;
@@ -85,6 +128,27 @@ export interface FounderRequest {
   updated_at: string;
 }
 
+export const AVAILABILITY_LABELS: Record<Availability, string> = {
+  exploring: "Exploring",
+  h1_5: "1–5h/settimana",
+  h5_10: "5–10h/settimana",
+  h10_20: "10–20h/settimana",
+  full: "Full commitment",
+};
+
+export const AVAILABILITY_ORDER: Availability[] = ["exploring", "h1_5", "h5_10", "h10_20", "full"];
+
+export const LOOKING_FOR_LABELS: Record<LookingFor, string> = {
+  cofounder: "Co-founder",
+  side_project: "Side project",
+  collaborator: "Collaborator",
+  internship: "Internship",
+  exploring: "Just exploring",
+};
+
+export const MODE_LABELS: Record<RoleMode, string> = { remote: "Remoto", onsite: "Presenza", hybrid: "Ibrido" };
+export const COLLAB_LABELS: Record<CollabType, string> = { cofounder: "Co-founder", equity: "Equity", unpaid: "Unpaid", paid: "Paid" };
+
 export const ROLE_LABELS: Record<RoleBadge, string> = {
   tech_dev: "Tecnologia/Sviluppo",
   design: "Design",
@@ -111,3 +175,13 @@ export const PROFILE_COLORS = [
   { name: "Ambra", value: "#eab308", gradient: "linear-gradient(135deg, #facc15, #a16207)" },
   { name: "Indaco", value: "#6366f1", gradient: "linear-gradient(135deg, #818cf8, #3730a3)" },
 ];
+
+export interface Message {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  project_id?: string | null;
+  content: string;
+  read_at?: string | null;
+  created_at: string;
+}

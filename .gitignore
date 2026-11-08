@@ -42,8 +42,7 @@ yarn-error.log*
 next-env.d.ts
 
 # temporanei
-ricerca_case_milano.html
-scrape_case.py
+tempNote.md
 
 # dev assets (local source files)
 /dev_source

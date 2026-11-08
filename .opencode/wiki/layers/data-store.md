@@ -27,7 +27,7 @@ lib/store.tsx (AppProvider → useStore)
   │     └── signOut()
   │
   ├── Public data (read by anyone)
-  │     ├── profiles (from DB, all users; optional role_custom, profile_color, university/context)
+  │     ├── profiles (`get_public_profiles` safe previews for active project/comment participants; full list is self/admin-only)
   │     ├── dbProjects (active projects publicly; owners can also read their archived projects)
   │     └── comments (from DB, all comments)
   │
@@ -94,6 +94,8 @@ lib/store.tsx (AppProvider → useStore)
 Profiles store a `profile_color` hex value (default `#f97316`). The profile editor offers predefined gradients plus a free color picker; the hex value is used for the profile banner and avatar. `role_badge` accepts `other` with an optional `role_custom` label. The existing `university` column is optional and can contain work status or another affiliation.
 
 The merged `projects` array rows map `theme` from the DB `projects.theme` column (default 0). Projects table in `supabase/schema.sql` has `theme integer not null default 0`. `PROJECT_STYLES` in `lib/utils.ts` indexes the style (Tramonto, Fusione, Abisso, Foresta, Magma, Nebula). `gradientStyle(project)` falls back to a deterministic gradient from `project.id` when `theme` is unset (seed projects).
+
+Public profile previews are fetched through `get_public_profiles(ids)` and expose only name, avatar, role, affiliation and profile color for users connected to active projects or public comments. Direct `profiles` table reads are limited to the current user and admins; only admins load the full profile list.
 
 Project `tags` remain the database field for compatibility, but the UI calls them categories. `ALL_CATEGORIES` in `lib/data.ts` includes legacy values plus Italian categories such as Casa e affitti, PropTech, Finanza personale, Dati e analisi, Risparmio and Servizi quotidiani.
 

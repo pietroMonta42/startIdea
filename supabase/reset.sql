@@ -17,6 +17,8 @@ drop function if exists public.handle_new_user() cascade;
 drop function if exists public.sync_stars_count() cascade;
 drop function if exists public.validate_application_contact() cascade;
 drop function if exists public.protect_admin_flag() cascade;
+drop function if exists public.get_public_profiles(uuid[]) cascade;
+drop function if exists public.is_current_user_admin() cascade;
 drop function if exists public.is_admin(uuid) cascade;
 
 -- Drop tables (l'ordine cascade gestisce le dipendenze)

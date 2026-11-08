@@ -1,20 +1,36 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, Search, Sparkles, Star } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ALL_CATEGORIES, categoryLabel } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { ROLE_LABELS } from "@/lib/types";
 import ProjectCard from "@/components/project-card";
+import ProfileCard from "@/components/profile-card";
 import { FeedSkeleton } from "@/components/ui";
 import { Logo } from "@/components/app-shell";
 
 type Sort = "top" | "comments" | "recent";
+type Tab = "projects" | "people";
 
 export default function EsploraPage() {
-  const { projects, hydrated, starCount, commentsFor, user } = useStore();
+  return (
+    <Suspense fallback={<FeedSkeleton />}>
+      <EsploraContent />
+    </Suspense>
+  );
+}
+
+function EsploraContent() {
+  const { projects, builders, hydrated, starCount, commentsFor, user } = useStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab: Tab = searchParams.get("tab") === "people" ? "people" : "projects";
+  const setTab = (next: Tab) => router.replace(`/esplora?tab=${next}`, { scroll: false });
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Tutte");
   const [stage, setStage] = useState("all");
@@ -47,6 +63,19 @@ export default function EsploraPage() {
     });
     return list;
   }, [projects, query, category, stage, sort, starCount, commentsFor]);
+
+  const filteredPeople = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return builders.filter((b) =>
+      !q ||
+      b.full_name.toLowerCase().includes(q) ||
+      (b.university ?? "").toLowerCase().includes(q) ||
+      (b.bio ?? "").toLowerCase().includes(q) ||
+      ROLE_LABELS[b.role_badge].toLowerCase().includes(q) ||
+      (b.city ?? "").toLowerCase().includes(q) ||
+      b.skills.some((skill) => skill.toLowerCase().includes(q))
+    );
+  }, [builders, query]);
 
   const featured = useMemo(
     () => [...projects].sort((a, b) => starCount(b) - starCount(a)).slice(0, 3),
@@ -92,11 +121,33 @@ export default function EsploraPage() {
         </p>
       </motion.div>
 
+      <div role="tablist" aria-label="Progetti o persone" className="flex gap-1.5 rounded-full border border-line bg-surface p-1.5">
+        {([{ id: "projects", label: "Progetti" }, { id: "people", label: "Persone" }] as { id: Tab; label: string }[]).map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "relative flex-1 cursor-pointer rounded-full py-2.5 text-sm font-bold transition-colors",
+              tab === t.id ? "text-white" : "text-muted hover:text-ink"
+            )}
+          >
+            {tab === t.id && (
+              <motion.span layoutId="explore-tab-pill" className="absolute inset-0 rounded-full bg-brand-500" transition={{ type: "spring", damping: 28, stiffness: 320 }} />
+            )}
+            <span className="relative">{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab === "projects" && (
       <div className="flex gap-2" aria-label="Filtra per fase">
         {[{ value: "all", label: "Tutte le fasi" }, { value: "idea", label: "Idea" }, { value: "launch", label: "Lancio" }].map((option) => (
           <button key={option.value} onClick={() => setStage(option.value)} className={cn("cursor-pointer rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors", stage === option.value ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-surface text-muted hover:text-ink")}>{option.label}</button>
         ))}
       </div>
+      )}
 
       {/* Search */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="relative">
@@ -104,13 +155,13 @@ export default function EsploraPage() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca per nome, settore, ruolo…"
+          placeholder={tab === "people" ? "Cerca per nome, skill, città, università…" : "Cerca per nome, settore, ruolo…"}
           className="h-12 w-full rounded-2xl border border-line bg-surface pl-11 pr-4 text-sm text-ink shadow-sm outline-none transition-shadow placeholder:text-muted/70 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
         />
       </motion.div>
 
       {/* Sort toggle (3-way) */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.14 }} className="flex gap-1.5 rounded-full border border-line bg-surface p-1.5">
+      {tab === "projects" && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.14 }} className="flex gap-1.5 rounded-full border border-line bg-surface p-1.5">
         {sorts.map((s) => (
           <button
             key={s.id}
@@ -127,10 +178,10 @@ export default function EsploraPage() {
             <span className="relative">{s.label}</span>
           </button>
         ))}
-      </motion.div>
+      </motion.div>}
 
        {/* Categorie */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.16 }} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+      {tab === "projects" && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.16 }} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
         {tags.map((t) => (
           <button
             key={t}
@@ -145,10 +196,10 @@ export default function EsploraPage() {
             {categoryLabel(t)}
           </button>
         ))}
-      </motion.div>
+      </motion.div>}
 
       {/* Feed header */}
-      {filtering && (
+      {tab === "projects" && filtering && (
         <div className="flex items-center justify-between px-1">
           <p className="text-xs font-semibold text-muted">
              {filtered.length} risultat{filtered.length === 1 ? "o" : "i"} · {filterSummary}
@@ -162,8 +213,25 @@ export default function EsploraPage() {
         </div>
       )}
 
+      {/* Persone */}
+      {tab === "people" && (
+        !hydrated ? (
+          <FeedSkeleton />
+        ) : filteredPeople.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-line py-16 text-center">
+            <Search className="h-10 w-10 text-muted/50" />
+            <p className="font-display font-bold text-ink">Nessuna persona trovata</p>
+            <p className="max-w-xs text-sm text-muted">Prova a cambiare ricerca.</p>
+          </div>
+        ) : (
+          <div className="grid items-stretch gap-4 sm:grid-cols-2">
+            {filteredPeople.map((b, i) => <ProfileCard key={b.id} profile={b} index={i} />)}
+          </div>
+        )
+      )}
+
       {/* Feed */}
-      {!hydrated ? (
+      {tab === "projects" && (!hydrated ? (
         <FeedSkeleton />
       ) : filtered.length === 0 ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-line py-16 text-center">
@@ -174,14 +242,14 @@ export default function EsploraPage() {
           </p>
         </motion.div>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2">
           <AnimatePresence mode="popLayout">
             {filtered.map((p, i) => (
               <ProjectCard key={p.id} project={p} index={i} />
             ))}
           </AnimatePresence>
         </div>
-      )}
+      ))}
     </div>
   );
 }

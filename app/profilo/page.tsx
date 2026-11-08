@@ -16,18 +16,16 @@ import {
   Shield,
   Star,
   Trash2,
+  UserCheck,
+  Users,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { Availability, Profile, PROFILE_COLORS, ROLE_COLORS, ROLE_LABELS, RoleBadge } from "@/lib/types";
-import { cn, gradientStyle, initials, timeAgo } from "@/lib/utils";
+import { Availability, AVAILABILITY_LABELS, AVAILABILITY_ORDER, LOOKING_FOR_LABELS, LookingFor, Profile, PROFILE_COLORS, ROLE_COLORS, ROLE_LABELS, RoleBadge } from "@/lib/types";
+import { cn, gradientStyle, initials, isValidHttpUrl, normalizeExternalUrl, timeAgo } from "@/lib/utils";
 import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
 import { Logo } from "@/components/app-shell";
-
-const AVAILABILITY: { id: Availability; dot: string; label: string }[] = [
-  { id: "available", dot: "bg-emerald-500", label: "Disponibile" },
-  { id: "consulting", dot: "bg-amber-500", label: "Solo consulenza" },
-  { id: "busy", dot: "bg-red-500", label: "Impegnato" },
-];
+import { AvailabilityBadge, LookingForBadges } from "@/components/profile-badges";
+import { ChipInput, FieldLabel, PillSelect, selectClass } from "@/components/form-bits";
 
 function LoginScreen() {
   const { signInOtp, signInWithEmail, signUpWithEmail, toast } = useStore();
@@ -182,8 +180,8 @@ function LoginScreen() {
 }
 
 function ProfileView() {
-  const { user, session, profiles, projects, applications, signOut, setAvailability, starCount, isAdmin, hasStarred, deleteProfileAdmin } = useStore();
-  const [tab, setTab] = useState<"progetti" | "salvati" | "candidature">("progetti");
+  const { user, session, profiles, builders, projects, applications, connections, respondConnection, removeConnection, signOut, starCount, isAdmin, hasStarred, deleteProfileAdmin } = useStore();
+  const [tab, setTab] = useState<"progetti" | "salvati" | "candidature" | "collegamenti">("progetti");
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Profile | null>(null);
 
@@ -232,21 +230,19 @@ function ProfileView() {
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {AVAILABILITY.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setAvailability(a.id)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition-all",
-                  user.availability === a.id ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-surface text-muted hover:text-ink"
-                )}
-              >
-                <span className={cn("h-2 w-2 rounded-full", a.dot)} />
-                {a.label}
-              </button>
-            ))}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <AvailabilityBadge value={user.availability} />
+            <LookingForBadges values={user.looking_for} />
           </div>
+          {(user.city || (user.interests?.length ?? 0) > 0 || user.linkedin_url || user.portfolio_url) && (
+            <p className="mt-3 text-xs text-muted">
+              {user.city && <>📍 {user.city} · </>}
+              Interessi e link sono visibili solo a team e collegati.
+            </p>
+          )}
+          <Link href={`/persona/${user.id}`} className="mt-3 inline-block text-xs font-bold text-brand-600 hover:text-brand-500 dark:text-brand-400">
+            Vedi il tuo profilo pubblico →
+          </Link>
 
           <div className="mt-5 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-bg py-3.5 text-center">
             {[
@@ -270,6 +266,7 @@ function ProfileView() {
             { id: "progetti", label: "Progetti", icon: FolderKanban, n: myProjects.length },
             { id: "salvati", label: "Salvati", icon: Star, n: saved.length },
             { id: "candidature", label: "Candidature", icon: Send, n: myApps.length + received.length },
+            { id: "collegamenti", label: "Collegamenti", icon: Users, n: connections.filter((c) => c.status === "accepted" || (c.status === "pending" && c.addressee_id === user.id)).length },
           ] as const
         ).map((t) => (
           <button
@@ -327,6 +324,66 @@ function ProfileView() {
           ))}
         </div>
       ))}
+
+      {tab === "collegamenti" && (() => {
+        const nameOf = (id: string) => builders.find((b) => b.id === id) ?? profiles.find((p) => p.id === id);
+        const incoming = connections.filter((c) => c.addressee_id === user.id && c.status === "pending");
+        const outgoing = connections.filter((c) => c.requester_id === user.id && c.status === "pending");
+        const accepted = connections.filter((c) => c.status === "accepted");
+        const other = (c: (typeof connections)[number]) => (c.requester_id === user.id ? c.addressee_id : c.requester_id);
+        const row = (id: string, actions: React.ReactNode, note?: string | null) => {
+          const person = nameOf(id);
+          return (
+            <div key={id} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
+              <Link href={`/persona/${id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                <Avatar name={person?.full_name ?? "?"} size="sm" color={person?.profile_color} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-ink">{person?.full_name ?? "Utente"}</p>
+                  {note ? <p className="line-clamp-2 text-xs text-muted">{note}</p> : person && <p className="truncate text-xs text-muted">{person.role_badge === "other" ? person.role_custom || ROLE_LABELS.other : ROLE_LABELS[person.role_badge]}</p>}
+                </div>
+              </Link>
+              <div className="flex gap-2">{actions}</div>
+            </div>
+          );
+        };
+        if (incoming.length + outgoing.length + accepted.length === 0) {
+          return <EmptyState icon={<Users className="h-8 w-8 text-brand-500" />} title="Nessun collegamento" text="Collegati con altri builder per condividere il profilo completo: interessi, LinkedIn e portfolio." cta={{ href: "/esplora?tab=people", label: "Scopri le persone" }} />;
+        }
+        return (
+          <div className="flex flex-col gap-5">
+            {incoming.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-bold text-ink">Richieste ricevute ({incoming.length})</h3>
+                <div className="flex flex-col gap-2.5">
+                  {incoming.map((c) => row(c.requester_id, (
+                    <>
+                      <Button size="sm" onClick={() => respondConnection(c.id, true)}><UserCheck className="h-3.5 w-3.5" /> Accetta</Button>
+                      <Button size="sm" variant="secondary" onClick={() => respondConnection(c.id, false)}>Rifiuta</Button>
+                    </>
+                  ), c.message))}
+                </div>
+                <p className="mt-2 text-xs text-muted">Accettando condividi il tuo profilo completo (interessi, LinkedIn, portfolio). Email e telefono restano privati.</p>
+              </div>
+            )}
+            {accepted.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-bold text-ink">Collegati ({accepted.length})</h3>
+                <div className="flex flex-col gap-2.5">
+                  {accepted.map((c) => row(other(c), <Button size="sm" variant="ghost" onClick={() => removeConnection(c.id)}>Rimuovi</Button>))}
+                </div>
+              </div>
+            )}
+            {outgoing.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-bold text-ink">Inviate ({outgoing.length})</h3>
+                <div className="flex flex-col gap-2.5">
+                  {outgoing.map((c) => row(c.addressee_id, <Button size="sm" variant="ghost" onClick={() => removeConnection(c.id)}>Annulla</Button>, "In attesa di risposta"))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {tab === "candidature" && (
         <div className="flex flex-col gap-5">
@@ -422,8 +479,14 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [role, setRole] = useState<RoleBadge>("tech_dev");
   const [customRole, setCustomRole] = useState("");
   const [university, setUniversity] = useState("");
+  const [city, setCity] = useState("");
   const [bio, setBio] = useState("");
-  const [skills, setSkills] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [availability, setAvailability] = useState<Availability>("exploring");
+  const [lookingFor, setLookingFor] = useState<LookingFor[]>([]);
+  const [linkedin, setLinkedin] = useState("");
+  const [portfolio, setPortfolio] = useState("");
   const [profileColor, setProfileColor] = useState(PROFILE_COLORS[0].value);
 
   useEffect(() => {
@@ -432,49 +495,120 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
       setRole(user.role_badge);
       setCustomRole(user.role_custom ?? "");
       setUniversity(user.university ?? "");
+      setCity(user.city ?? "");
       setBio(user.bio ?? "");
-      setSkills((user.skills ?? []).join(", "));
+      setSkills(user.skills ?? []);
+      setInterests(user.interests ?? []);
+      setAvailability(user.availability);
+      setLookingFor(user.looking_for ?? []);
+      setLinkedin(user.linkedin_url ?? "");
+      setPortfolio(user.portfolio_url ?? "");
       setProfileColor(user.profile_color ?? PROFILE_COLORS[0].value);
     }
   }, [open, user]);
 
   if (!user) return null;
+
+  const save = async () => {
+    if (name.trim().length < 2) return toast("Inserisci nome e cognome");
+    if (role === "other" && !customRole.trim()) return toast("Specifica il tuo ruolo");
+    if (bio.length > 160) return toast("La bio può avere al massimo 160 caratteri");
+    if (linkedin.trim() && !isValidHttpUrl(linkedin)) return toast("Il link LinkedIn non è valido");
+    if (portfolio.trim() && !isValidHttpUrl(portfolio)) return toast("Il link GitHub / Portfolio non è valido");
+    await updateProfile({
+      full_name: name.trim(),
+      role_badge: role,
+      role_custom: role === "other" ? customRole.trim() : null,
+      university: university.trim() || null,
+      city: city.trim() || null,
+      bio: bio.trim() || null,
+      skills,
+      interests,
+      availability,
+      looking_for: lookingFor,
+      linkedin_url: linkedin.trim() ? normalizeExternalUrl(linkedin) : null,
+      portfolio_url: portfolio.trim() ? normalizeExternalUrl(portfolio) : null,
+      profile_color: profileColor,
+    });
+    onClose();
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Modifica profilo">
-      <div className="flex flex-col gap-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome e cognome" />
-        <div>
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Ruolo</span>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {(Object.keys(ROLE_LABELS) as RoleBadge[]).map((r) => (
-              <button key={r} onClick={() => setRole(r)} className={cn("cursor-pointer rounded-2xl border px-3 py-2 text-xs font-bold transition-all", role === r ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-surface text-muted hover:text-ink")}>{ROLE_LABELS[r]}</button>
-            ))}
+      <div className="flex flex-col gap-5">
+        <section className="flex flex-col gap-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">Profilo pubblico</p>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome e cognome" maxLength={60} />
+          <div>
+            <FieldLabel>Ruolo principale</FieldLabel>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {(Object.keys(ROLE_LABELS) as RoleBadge[]).map((r) => (
+                <button key={r} type="button" onClick={() => setRole(r)} className={cn("cursor-pointer rounded-2xl border px-3 py-2 text-xs font-bold transition-all", role === r ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-surface text-muted hover:text-ink")}>{ROLE_LABELS[r]}</button>
+              ))}
+            </div>
+            {role === "other" && <Input value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Specifica il tuo ruolo" className="mt-2" />}
           </div>
-          {role === "other" && <Input value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Specifica il tuo ruolo" className="mt-2" />}
-        </div>
-        <div>
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Colore del profilo</span>
-          <div className="flex flex-wrap items-center gap-2">
-            {PROFILE_COLORS.map((color) => (
-              <button
-                key={color.value}
-                type="button"
-                onClick={() => setProfileColor(color.value)}
-                className={cn("h-8 w-8 cursor-pointer rounded-full border-2 transition-transform hover:scale-110", profileColor === color.value ? "border-ink ring-2 ring-brand-500/30" : "border-transparent")}
-                style={{ backgroundImage: color.gradient }}
-                aria-label={`Scegli il colore ${color.name}`}
-              />
-            ))}
-            <label className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-line bg-surface text-xs font-bold text-muted" title="Scegli un colore personalizzato">
-              <input type="color" value={profileColor} onChange={(e) => setProfileColor(e.target.value)} className="h-10 w-10 cursor-pointer opacity-0" aria-label="Scegli un colore personalizzato" />
-              <span className="pointer-events-none absolute">+</span>
-            </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università (facoltativo)" />
+            <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Città (facoltativo)" />
           </div>
-        </div>
-        <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Università, lavoro o altro (facoltativo)" />
-        <Input value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Competenze (separate da virgola)" />
-        <Textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Bio" />
-        <Button size="lg" onClick={async () => { if (role === "other" && !customRole.trim()) return toast("Specifica il tuo ruolo"); await updateProfile({ full_name: name, role_badge: role, role_custom: role === "other" ? customRole.trim() : null, university, bio, skills: skills.split(",").map((s) => s.trim()).filter(Boolean), profile_color: profileColor }); onClose(); }}>Salva</Button>
+          <label className="block">
+            <FieldLabel hint={`${bio.length}/160`}>Bio breve</FieldLabel>
+            <Textarea rows={3} maxLength={160} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Chi sei e cosa vuoi costruire" />
+          </label>
+          <div>
+            <FieldLabel hint="Invio o virgola per aggiungere">Skill</FieldLabel>
+            <ChipInput values={skills} onChange={setSkills} placeholder="Es. React, Figma, SEO" max={12} />
+          </div>
+          <label className="block">
+            <FieldLabel>Disponibilità</FieldLabel>
+            <select value={availability} onChange={(e) => setAvailability(e.target.value as Availability)} className={selectClass}>
+              {AVAILABILITY_ORDER.map((a) => <option key={a} value={a}>{AVAILABILITY_LABELS[a]}</option>)}
+            </select>
+          </label>
+          <div>
+            <FieldLabel hint="facoltativo">Cerco</FieldLabel>
+            <PillSelect options={(Object.keys(LOOKING_FOR_LABELS) as LookingFor[]).map((id) => ({ id, label: LOOKING_FOR_LABELS[id] }))} value={lookingFor} onChange={setLookingFor} />
+          </div>
+          <div>
+            <FieldLabel>Colore del profilo</FieldLabel>
+            <div className="flex flex-wrap items-center gap-2">
+              {PROFILE_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => setProfileColor(color.value)}
+                  className={cn("h-9 w-9 cursor-pointer rounded-full border-2 transition-transform hover:scale-110", profileColor === color.value ? "border-ink ring-2 ring-brand-500/30" : "border-transparent")}
+                  style={{ backgroundImage: color.gradient }}
+                  aria-label={`Scegli il colore ${color.name}`}
+                />
+              ))}
+              <label className="relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-line bg-surface text-xs font-bold text-muted" title="Scegli un colore personalizzato">
+                <input type="color" value={profileColor} onChange={(e) => setProfileColor(e.target.value)} className="h-10 w-10 cursor-pointer opacity-0" aria-label="Scegli un colore personalizzato" />
+                <span className="pointer-events-none absolute">+</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3 rounded-2xl border border-line bg-bg p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">Solo team e collegati</p>
+          <p className="text-xs leading-relaxed text-muted">Questi dettagli (tutti facoltativi) li vedono solo i membri dei tuoi team e le persone che accetti di collegare. Email e telefono non fanno parte del profilo: li condividi tu, volta per volta, nelle candidature.</p>
+          <div>
+            <FieldLabel hint="Invio o virgola per aggiungere">Interessi</FieldLabel>
+            <ChipInput values={interests} onChange={setInterests} placeholder="Es. AI, sostenibilità, gaming" max={10} />
+          </div>
+          <label className="block">
+            <FieldLabel>LinkedIn</FieldLabel>
+            <Input type="url" inputMode="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="linkedin.com/in/nome" maxLength={200} />
+          </label>
+          <label className="block">
+            <FieldLabel>GitHub / Portfolio</FieldLabel>
+            <Input type="url" inputMode="url" value={portfolio} onChange={(e) => setPortfolio(e.target.value)} placeholder="github.com/nome oppure il tuo sito" maxLength={200} />
+          </label>
+        </section>
+
+        <Button size="lg" onClick={save}>Salva</Button>
       </div>
     </Modal>
   );

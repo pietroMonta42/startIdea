@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeProvider, useTheme } from "next-themes";
 import { motion } from "framer-motion";
-import { Compass, Crown, FolderKanban, LogOut, Moon, Plus, Sun, User } from "lucide-react";
+import { Compass, Crown, FolderKanban, Inbox, LogOut, Moon, Plus, Sun, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { Avatar } from "./ui";
@@ -50,15 +50,15 @@ export function ThemeToggle({ className }: { className?: string }) {
 
 const NAV = [
   { href: "/founder", label: "Founder", icon: Crown },
-  { href: "/progetti", label: "Progetti", icon: FolderKanban },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/esplora", label: "Esplora", icon: Compass },
   { href: "/profilo", label: "Profilo", icon: User },
 ];
-const PROTECTED_ROUTES = ["/home", "/founder", "/progetti", "/nuovo", "/amministrazione"];
+const PROTECTED_ROUTES = ["/home", "/founder", "/progetti", "/inbox", "/nuovo", "/amministrazione"];
 
 function SideNav() {
   const pathname = usePathname();
-  const { user, signOut } = useStore();
+  const { user, signOut, unreadMessagesCount } = useStore();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-surface px-5 py-6 lg:flex">
       <Link href="/home" className="flex items-center gap-3 px-1">
@@ -87,6 +87,11 @@ function SideNav() {
               )}
               <item.icon className={cn("relative h-5 w-5", active && "text-brand-500")} />
               <span className="relative">{item.label}</span>
+              {item.href === "/inbox" && unreadMessagesCount > 0 && (
+                <span className="relative ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white">
+                  {unreadMessagesCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -144,6 +149,7 @@ function MobileHeader() {
 
 function BottomNav() {
   const pathname = usePathname();
+  const { unreadMessagesCount } = useStore();
   return (
     <nav aria-label="Navigazione principale" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-xl grid-cols-5 items-end px-2 pt-2 pb-2">
@@ -167,6 +173,7 @@ function BottomNav() {
 }
 
 function TabItem({ item, active }: { item: (typeof NAV)[number]; active: boolean }) {
+  const { unreadMessagesCount } = useStore();
   return (
     <Link href={item.href} className="flex flex-col items-center gap-1 py-1">
       <span className={cn("relative flex h-8 w-full max-w-12 items-center justify-center rounded-full", active && "text-brand-500")}>
@@ -178,6 +185,11 @@ function TabItem({ item, active }: { item: (typeof NAV)[number]; active: boolean
           />
         )}
         <item.icon className="relative h-5.5 w-5.5" strokeWidth={active ? 2.4 : 2} />
+        {item.href === "/inbox" && unreadMessagesCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[9px] font-bold text-white">
+            {unreadMessagesCount}
+          </span>
+        )}
       </span>
       <span className={cn("text-[10px] font-semibold", active ? "text-ink" : "text-muted")}>{item.label}</span>
     </Link>

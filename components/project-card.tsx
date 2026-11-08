@@ -3,11 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ExternalLink, MapPin, MessageCircle, Star } from "lucide-react";
+import { Clock, GraduationCap, MapPin, MessageCircle, Share2, Star } from "lucide-react";
 import { Project } from "@/lib/types";
 import { categoryLabel } from "@/lib/data";
 import { useStore } from "@/lib/store";
-import { cn, gradientStyle, scrimStyle, initials, timeAgo } from "@/lib/utils";
+import { cn, gradientStyle, initials } from "@/lib/utils";
 import { Badge } from "./ui";
 
 export function StarButton({
@@ -61,103 +61,152 @@ export function StarButton({
   );
 }
 
+export function ShareButton({
+  project,
+  size = "md",
+  className,
+  onDark = false,
+}: {
+  project: Project;
+  size?: "md" | "lg";
+  className?: string;
+  onDark?: boolean;
+}) {
+  const { toast } = useStore();
+  const share = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/progetto/${project.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: project.title, text: project.short_pitch, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast("Link copiato negli appunti");
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return;
+      toast("Impossibile condividere il link");
+    }
+  };
+  return (
+    <button
+      onClick={share}
+      className={cn(
+        "flex cursor-pointer items-center justify-center rounded-full transition-colors",
+        size === "md" ? "p-2" : "p-2.5",
+        onDark ? "bg-white/15 text-white hover:bg-white/25" : "bg-line/70 text-muted hover:text-ink",
+        className
+      )}
+      aria-label="Condividi progetto"
+      title="Condividi"
+    >
+      <Share2 className={size === "md" ? "h-4 w-4" : "h-5 w-5"} />
+    </button>
+  );
+}
+
+const INACTIVE_AFTER_DAYS = 45;
+
+function activityInfo(project: Project) {
+  const ref = project.updated_at ?? project.created_at;
+  const days = Math.max(0, Math.floor((Date.now() - +new Date(ref)) / 864e5));
+  const label = days === 0 ? "Aggiornato oggi" : days === 1 ? "Aggiornato 1 giorno fa" : `Aggiornato ${days} giorni fa`;
+  return { label, inactive: days > INACTIVE_AFTER_DAYS };
+}
+
 export default function ProjectCard({ project, index = 0 }: { project: Project; index?: number }) {
   const { profileById, commentsFor } = useStore();
   const owner = profileById(project.owner_id);
   const comments = commentsFor(project.id);
+  const activity = activityInfo(project);
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.06, 0.4), type: "spring", damping: 26, stiffness: 260 }}
-      className="group overflow-hidden rounded-3xl border border-line bg-surface shadow-sm transition-shadow hover:shadow-xl hover:shadow-zinc-950/5"
+      className="group flex h-full flex-col rounded-3xl border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-xl hover:shadow-zinc-950/5"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 pb-3">
-        <div
+      <div className="flex items-start gap-3">
+        <Link
+          href={`/progetto/${project.id}`}
+          aria-label={`Apri ${project.title}`}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-display text-base font-bold text-white"
           style={gradientStyle(project)}
         >
           {initials(project.title).slice(0, 1)}
-        </div>
+        </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="min-w-0 flex-1 truncate font-display text-[15px] font-bold text-ink">{project.title}</h3>
-            {Date.now() - +new Date(project.created_at) < 7 * 864e5 && (
-              <Badge className="bg-brand-500 text-white">NUOVO</Badge>
-            )}
+            <h3 className="min-w-0 flex-1 truncate font-display text-[15px] font-bold text-ink">
+              <Link href={`/progetto/${project.id}`}>{project.title}</Link>
+            </h3>
             <Badge className="bg-violet-500/10 text-violet-600 dark:text-violet-400">{project.stage === "launch" ? "LANCIO" : "IDEA"}</Badge>
           </div>
-          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
-            <MapPin className="h-3 w-3 shrink-0" />
-            {project.location} · {timeAgo(project.created_at)}
-            {owner && <> · di {owner.full_name.split(" ")[0]}</>}
-          </p>
+          <p className="mt-0.5 line-clamp-2 text-sm leading-snug text-muted">{project.short_pitch}</p>
         </div>
-        <StarButton project={project} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <StarButton project={project} />
+          <ShareButton project={project} />
+        </div>
       </div>
 
-      {/* Hero */}
-      <Link href={`/progetto/${project.id}`} className="block" aria-label={`Apri ${project.title}`}>
-        <div
-          className="relative flex aspect-[16/9] items-center justify-center overflow-hidden"
-          style={gradientStyle(project, { dots: true })}
-        >
-          <span className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full blur-2xl" style={{ backgroundColor: "rgba(255,255,255,0.18)" }} />
-          <span className="pointer-events-none absolute -bottom-10 -left-6 h-40 w-40 rounded-full blur-2xl" style={{ backgroundColor: "rgba(0,0,0,0.12)" }} />
-          <span className="pointer-events-none absolute inset-0" style={scrimStyle()} />
-          <h2 className="relative px-6 text-center font-display text-4xl font-bold tracking-tight text-white drop-shadow-md transition-transform duration-500 group-hover:scale-[1.04] sm:text-5xl">
-            {project.title}
-          </h2>
-        </div>
-      </Link>
-
-      {/* Body */}
-      <div className="p-4 pt-3">
-        <p className="line-clamp-2 text-sm leading-relaxed text-muted">{project.short_pitch}</p>
-
-        {project.link && (
-          <a
-            href={project.link}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="mt-3 flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-brand-600 transition-colors hover:text-brand-500 dark:text-brand-400"
-          >
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Visita il progetto</span>
-          </a>
+      {/* Meta: founder, università, città */}
+      <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+        {owner && <span className="font-semibold text-ink">{owner.full_name}</span>}
+        {owner?.university && (
+          <span className="flex items-center gap-1"><GraduationCap className="h-3 w-3 shrink-0" />{owner.university}</span>
         )}
+        {project.location && (
+          <span className="flex items-center gap-1"><MapPin className="h-3 w-3 shrink-0" />{project.location}</span>
+        )}
+      </p>
 
+      {/* Ruoli aperti */}
+      {project.open_roles.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {project.tags.map((t) => (
-            <Badge key={t} className="bg-line/70 text-muted">
-              {categoryLabel(t)}
-            </Badge>
-          ))}
-          {project.open_roles.slice(0, 2).map((r) => (
+          {project.open_roles.slice(0, 4).map((r) => (
             <Badge key={r} className="border border-brand-500/30 bg-brand-500/10 text-brand-600 dark:text-brand-400">
               cerca: {r}
             </Badge>
           ))}
+          {project.open_roles.length > 4 && <Badge className="bg-line/70 text-muted">+{project.open_roles.length - 4}</Badge>}
         </div>
+      )}
 
-        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+      {project.tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {project.tags.slice(0, 3).map((t) => (
+            <Badge key={t} className="bg-line/70 text-muted">{categoryLabel(t)}</Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="min-h-4 flex-1" />
+      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
+        <span className={"flex min-w-0 items-center gap-1.5 text-xs font-semibold text-muted"}>
+          <Clock className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{activity.label}</span>
+          {activity.inactive && <Badge className="bg-zinc-500/15 text-zinc-600 dark:text-zinc-400">Inattivo</Badge>}
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
           <Link
             href={`/progetto/${project.id}#community`}
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-ink"
+            className="flex items-center gap-1 text-xs font-semibold text-muted transition-colors hover:text-ink"
           >
             <MessageCircle className="h-4 w-4" />
-            {comments.length} commenti
+            {comments.length}
           </Link>
           <Link
             href={`/progetto/${project.id}`}
             className="text-xs font-bold text-brand-600 transition-colors hover:text-brand-500 dark:text-brand-400"
           >
-            Scopri di più →
+            Scopri →
           </Link>
-        </div>
+        </span>
       </div>
     </motion.article>
   );

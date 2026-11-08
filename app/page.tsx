@@ -61,28 +61,30 @@ export default function HomePage() {
         </motion.div>
 
         <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">SparkLab</h1>
-          <p className="mt-2 text-sm font-semibold uppercase tracking-widest text-brand-500">Il punto di gravità dell&apos;innovazione italiana</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-brand-500">SparkLab · per builder universitari</p>
+          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+            Hai un&apos;idea.<br />Trova chi può costruirla con te.
+          </h1>
         </div>
 
         <p className="max-w-md text-base leading-relaxed text-muted">
-          La comunità dove studenti con idee incontrano studenti con competenze. Pubblica il tuo progetto, raccogli stelle, trova il tuo cofondatore.
+          Studenti e builder con skill complementari si incontrano qui: pubblica il tuo progetto, scopri chi cerca un team e costruite insieme.
         </p>
 
-        <div className="flex w-full max-w-xs flex-col gap-2.5">
+        <div className="flex w-full max-w-sm flex-col gap-2.5 sm:flex-row">
           <Link
-            href="/profilo"
-            className="group flex h-12 items-center justify-center gap-2 rounded-2xl bg-brand-500 text-sm font-bold text-white shadow-lg shadow-brand-500/25 transition-colors hover:bg-brand-600"
-          >
-            Entra nella comunità
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-          <Link
-            href="/esplora"
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold text-ink transition-colors hover:bg-bg"
+            href="/esplora?tab=projects"
+            className="group flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-500 text-sm font-bold text-white shadow-lg shadow-brand-500/25 transition-colors hover:bg-brand-600"
           >
             <Compass className="h-4 w-4" />
-            Esplora le idee
+            Esplora Progetti
+          </Link>
+          <Link
+            href="/esplora?tab=people"
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-brand-500 bg-surface text-sm font-bold text-brand-600 transition-colors hover:bg-brand-500/10 dark:text-brand-400"
+          >
+            <Users className="h-4 w-4" />
+            Trova Persone
           </Link>
         </div>
       </motion.div>

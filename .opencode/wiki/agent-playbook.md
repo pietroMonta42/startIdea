@@ -19,7 +19,8 @@ Conventions and decision trees for editing this codebase safely.
 | Change a shared component | `components/<file>.tsx` | UI primitives → `ui.tsx`; cards → `project-card.tsx`; layout → `app-shell.tsx` |
 | Change card appearance | `components/project-card.tsx` | `ProjectCard` + `StarButton` sub-component |
 | Add new data action (e.g. "like") | `lib/store.tsx` | Add to Store interface + actions + loaders; add RLS policy in `supabase/schema.sql` |
-| Change auth flow | `lib/store.tsx` (actions) + `app/profilo/page.tsx` (UI) + `app/auth/callback/route.ts` + `proxy.ts` | Auth touches 4 files |
+| Change auth flow | `lib/store.tsx` (actions) + `app/profilo/page.tsx` (UI) + `app/auth/callback/route.ts` + `proxy.ts` | Auth touches 4 files. Primary auth = email+password (`signInWithEmail`/`signUpWithEmail`); OAuth buttons removed from UI (provider config pending). Callback errors → redirect `/profilo?auth_error=…` → toast (never fail silently) |
+| Toggle demo/seed visibility | env `NEXT_PUBLIC_DEMO_MODE` | `"false"` hides seeds in prod; auto-off when Supabase configured. Logic: `SHOW_SEED` in `lib/store.tsx` |
 | Change Supabase schema | `supabase/schema.sql` | Schema is idempotent: can re-run safely |
 | Change seed/project demo data | `lib/data.ts` | Also update `Store` interface if adding fields |
 | Fix a type error | `lib/types.ts` then `lib/store.tsx` row mappers | Types cascade to all components |

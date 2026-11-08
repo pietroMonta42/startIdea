@@ -117,7 +117,7 @@ export function Modal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 60 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="relative z-10 max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface p-6 shadow-2xl sm:rounded-3xl"
+            className="relative z-10 max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface p-6 shadow-2xl sm:rounded-3xl"
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-lg font-bold text-ink">{title}</h3>

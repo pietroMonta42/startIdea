@@ -22,8 +22,10 @@ Top-level folder map. For deep-dive on specific areas, see layer and domain page
 | `app/founder/page.tsx` | **Founder space**: curated resources and support request form for authenticated users with an active project |
 | `app/progetti/page.tsx` | **Project management**: owned projects, idea/launch stage, archive controls, received applications and contact details |
 | `app/amministrazione/page.tsx` | **Admin console**: maintain Founder resources and process support requests |
-| `app/nuovo/page.tsx` | **New project form**: title, pitch, categories, stage, roles, link, style picker and Vision Markdown preview |
-| `app/profilo/page.tsx` | **Profile / Login**: auth screen or logged-in proof-of-work and profile administration |
+| `app/nuovo/page.tsx` | **New project wizard**: 3-step wizard (Idea, Project, Team) with auto-draft persistence in localStorage (no markdown) |
+| `app/profilo/page.tsx` | **Profile / Login**: auth screen or personal profile settings, availability, looking for, external links, tabs (Projects, Starred, Applications, Connections) |
+| `app/persona/[id]/page.tsx` | **Public profile**: public builder details, connection requests, and unlockable full profile (interests, LinkedIn, portfolio) for team/connected |
+| `app/inbox/page.tsx` | **Unified Inbox**: 1:1 post-match chat threads, application management (received & sent) with direct mutual match actions |
 | `app/progetto/[id]/page.tsx` | **Project detail**: gradient hero, stage, open roles, application form with contact consent, Vision, comments and owner edit/delete |
 | `app/auth/callback/route.ts` | OAuth/Magic Link callback: exchanges code for Supabase session |
 | `app/manifest.ts` | PWA manifest (standalone, orange theme, SVG icon) |
@@ -65,6 +67,6 @@ Top-level folder map. For deep-dive on specific areas, see layer and domain page
 | `next.config.ts` | Headers for `sw.js` (no-cache, correct Content-Type) and `manifest.webmanifest` |
 | `package.json` | Next 16, React 19, Framer Motion, Tailwind v4, lucide-react, next-themes, react-markdown, @supabase/ssr |
 | `tsconfig.json` | Strict TypeScript, `@/*` path alias, bundler resolution |
-| `.env.example` | Required env vars template |
+| `.env.example` | Required env vars template (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_KEY` publishable, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_DEMO_MODE`) |
 | `plan.md` | Original technical plan (Italian) — architecture, DB schema, UX flow |
 | `vision.md` | Vision document (Italian) — product philosophy |

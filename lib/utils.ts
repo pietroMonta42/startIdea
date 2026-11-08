@@ -104,3 +104,13 @@ export function uid(): string {
 export function daysAgo(n: number, hours = 0): string {
   return new Date(Date.now() - n * 864e5 - hours * 36e5).toISOString();
 }
+
+/** True se il valore è un URL http(s) valido (dopo normalizzazione). */
+export function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(normalizeExternalUrl(value));
+    return (url.protocol === "http:" || url.protocol === "https:") && url.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}

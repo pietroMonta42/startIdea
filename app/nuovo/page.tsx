@@ -1,53 +1,75 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lightbulb, MapPin, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Lightbulb, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { ProjectRoleInput } from "@/lib/types";
 import { ALL_CATEGORIES, categoryLabel } from "@/lib/data";
-import { cn, gradientStyle, normalizeExternalUrl, PROJECT_STYLES } from "@/lib/utils";
-import Markdown from "@/components/markdown";
-import { Badge, Button, FeedSkeleton, Input, Textarea } from "@/components/ui";
+import { cn, gradientStyle, isValidHttpUrl, normalizeExternalUrl, PROJECT_STYLES } from "@/lib/utils";
+import { Button, FeedSkeleton, Input, Textarea } from "@/components/ui";
+import { FieldLabel, selectClass } from "@/components/form-bits";
+import { RoleCard, RoleForm } from "@/components/role-form";
 
-const README_TEMPLATE = `## Il Problema
+const DRAFT_KEY = "sparklab-new-project-draft-v2";
+const STEPS = ["Idea", "Progetto", "Team"] as const;
 
-Descrivi il problema che vuoi risolvere. Chi lo vive ogni giorno?
+interface Draft {
+  step: number;
+  title: string;
+  pitch: string;
+  categories: string[];
+  location: string;
+  university: string;
+  problem: string;
+  solution: string;
+  progress: string;
+  stage: "idea" | "launch";
+  link: string;
+  theme: number;
+  roles: ProjectRoleInput[];
+}
 
-## La Soluzione
-
-Come funziona la tua idea? Elenca le feature principali:
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Il Mercato
-
-Chi sono i primi utenti? Come cresce?
-
-## Stato attuale
-
-Dove siete arrivati? Cosa manca per l'MVP?`;
+const EMPTY_DRAFT: Draft = {
+  step: 0, title: "", pitch: "", categories: [], location: "", university: "",
+  problem: "", solution: "", progress: "", stage: "idea", link: "", theme: 0, roles: [],
+};
 
 export default function NuovoPage() {
   const { user, authReady, addProject, toast } = useStore();
   const router = useRouter();
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [ready, setReady] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const skipSave = useRef(false);
 
-  const [title, setTitle] = useState("");
-  const [pitch, setPitch] = useState("");
-  const [location, setLocation] = useState("");
-  const [link, setLink] = useState("");
-  const [stage, setStage] = useState<"idea" | "launch">("idea");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [roleInput, setRoleInput] = useState("");
-  const [readme, setReadme] = useState(README_TEMPLATE);
-  const [preview, setPreview] = useState(false);
-  const [theme, setTheme] = useState(0);
+  // Ripristina la bozza salvata in locale (una sola volta, solo lato client).
+  useEffect(() => {
+    let restored: Draft | null = null;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) restored = { ...EMPTY_DRAFT, ...JSON.parse(raw) };
+    } catch {
+      restored = null;
+    }
+    if (restored) setDraft(restored);
+    setReady(true);
+  }, []);
 
-  if (!authReady) return <FeedSkeleton />;
+  // Salva la bozza a ogni modifica.
+  useEffect(() => {
+    if (!ready || skipSave.current) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* storage non disponibile: la bozza resta solo in memoria */
+    }
+  }, [draft, ready]);
+
+  if (!authReady || !ready) return <FeedSkeleton />;
 
   if (!user) {
     return (
@@ -56,201 +78,244 @@ export default function NuovoPage() {
           <Lightbulb className="h-8 w-8 text-brand-500" />
         </div>
         <h1 className="font-display text-2xl font-bold text-ink">Hai un&apos;idea da lanciare?</h1>
-        <p className="max-w-xs text-sm text-muted">
-          Crea prima il tuo profilo: ci vogliono 20 secondi, niente password.
-        </p>
-        <Link href="/profilo">
-          <Button size="lg">Vai al Profilo</Button>
-        </Link>
+        <p className="max-w-xs text-sm text-muted">Crea prima il tuo profilo: ci vogliono 20 secondi.</p>
+        <Link href="/profilo"><Button size="lg">Vai al Profilo</Button></Link>
       </div>
     );
   }
 
-  const toggleCategory = (category: string) =>
-    setCategories((prev) => (prev.includes(category) ? prev.filter((x) => x !== category) : prev.length < 3 ? [...prev, category] : prev));
+  const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  const toggleCategory = (c: string) =>
+    set("categories", draft.categories.includes(c) ? draft.categories.filter((x) => x !== c) : draft.categories.length < 3 ? [...draft.categories, c] : draft.categories);
 
-  const addRole = () => {
-    const r = roleInput.trim();
-    if (!r || roles.includes(r)) return;
-    setRoles([...roles, r]);
-    setRoleInput("");
+  const validate = (step: number): string | null => {
+    if (step === 0) {
+      if (draft.title.trim().length < 3) return "Il nome del progetto è troppo corto";
+      if (draft.pitch.trim().length < 10) return "La tagline deve dire qualcosa di concreto (almeno 10 caratteri)";
+      if (draft.categories.length === 0) return "Scegli almeno un settore";
+      if (!draft.location.trim()) return "Aggiungi la città";
+    }
+    if (step === 1) {
+      if (draft.problem.trim().length < 10) return "Descrivi il problema (almeno 10 caratteri)";
+      if (draft.solution.trim().length < 10) return "Descrivi la soluzione (almeno 10 caratteri)";
+      if (draft.link.trim() && !isValidHttpUrl(draft.link)) return "Il link del progetto non è valido";
+    }
+    if (step === 2 && draft.roles.length === 0) return "Aggiungi almeno una posizione aperta";
+    return null;
   };
 
-  const submit = async () => {
-    if (!user) return toast("Accedi per pubblicare");
-    if (title.trim().length < 3) return toast("Il titolo è troppo corto");
-    if (pitch.trim().length < 10) return toast("Il pitch deve dire qualcosa di concreto");
-    if (!location.trim()) return toast("Aggiungi la tua città");
-    if (categories.length === 0) return toast("Scegli almeno una categoria");
-    if (roles.length === 0) return toast("Aggiungi almeno un ruolo che cerchi");
-    const id = await addProject({
-      title: title.trim(),
-      short_pitch: pitch.trim(),
-      location: location.trim(),
-      link: link.trim() ? normalizeExternalUrl(link) : null,
-      stage,
-      tags: categories,
-      open_roles: roles,
-      readme_markdown: readme,
-      theme,
-    });
+  const goNext = () => {
+    const error = validate(draft.step);
+    if (error) return toast(error);
+    set("step", draft.step + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const goBack = () => {
+    set("step", draft.step - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const publish = async () => {
+    for (const s of [0, 1, 2]) {
+      const error = validate(s);
+      if (error) {
+        set("step", s);
+        return toast(error);
+      }
+    }
+    setPublishing(true);
+    const id = await addProject(
+      {
+        title: draft.title.trim(),
+        short_pitch: draft.pitch.trim(),
+        location: draft.location.trim(),
+        university: draft.university.trim() || null,
+        link: draft.link.trim() ? normalizeExternalUrl(draft.link) : null,
+        stage: draft.stage,
+        tags: draft.categories,
+        readme_markdown: "",
+        problem: draft.problem.trim(),
+        solution: draft.solution.trim(),
+        progress: draft.progress.trim(),
+        theme: draft.theme,
+      },
+      draft.roles
+    );
+    setPublishing(false);
     if (!id) return;
-    toast("Idea pubblicata! Benvenuto nel Batch 2026");
+    skipSave.current = true;
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    toast("Idea pubblicata!");
     router.push(`/progetto/${id}`);
   };
 
+  const step = draft.step;
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-500">
           <Lightbulb className="h-3.5 w-3.5" />
           Pubblica un&apos;idea
         </div>
-        <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink">
-          La tua startup, in chiaro.
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Le idee senza esecuzione valgono zero. Pubblicala, raccogli stelle, trova chi la costruisce con te.
-        </p>
+        <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink">La tua startup, in chiaro.</h1>
+        <p className="mt-1 text-sm text-muted">Tre passaggi rapidi. La bozza si salva da sola su questo dispositivo.</p>
       </motion.div>
 
+      {/* Barra di avanzamento */}
+      <nav aria-label="Avanzamento" className="flex flex-col gap-2">
+        <div className="flex gap-1.5">
+          {STEPS.map((label, i) => (
+            <div key={label} className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+              <motion.div className="h-full bg-brand-500" initial={false} animate={{ width: i <= step ? "100%" : "0%" }} transition={{ duration: 0.3 }} />
+            </div>
+          ))}
+        </div>
+        <ol className="grid grid-cols-3 text-xs font-bold">
+          {STEPS.map((label, i) => (
+            <li key={label} className={cn("flex items-center gap-1.5", i === 1 && "justify-center", i === 2 && "justify-end", i <= step ? "text-brand-600 dark:text-brand-400" : "text-muted")}>
+              <span className={cn("flex h-5 w-5 items-center justify-center rounded-full text-[10px]", i < step ? "bg-brand-500 text-white" : i === step ? "border border-brand-500" : "border border-line")}>
+                {i < step ? <Check className="h-3 w-3" /> : i + 1}
+              </span>
+              <span>{label}</span>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
       <div className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-5 sm:p-7">
-        {/* Titolo */}
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Nome del progetto</span>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. ThesisAI" maxLength={30} />
-        </label>
-
-        {/* Pitch */}
-        <label className="block">
-          <span className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted">
-             Presentazione breve
-            <span className={cn("font-mono", pitch.length > 140 && "text-red-500")}>{pitch.length}/140</span>
-          </span>
-          <Textarea
-            rows={2}
-            value={pitch}
-            onChange={(e) => setPitch(e.target.value.slice(0, 140))}
-            placeholder="Spiega l'idea in una frase. Se non ci riesci, l'idea non è ancora chiara."
-          />
-        </label>
-
-        {/* Città */}
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Città / Ateneo</span>
-          <div className="relative">
-            <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Es. Bologna" className="pl-10" maxLength={30} />
-          </div>
-        </label>
-
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Link del progetto (facoltativo)</span>
-          <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Es. https://esempio.it" type="url" />
-        </label>
-
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Fase del progetto</span>
-          <select value={stage} onChange={(e) => setStage(e.target.value as "idea" | "launch")} className="h-11 w-full rounded-2xl border border-line bg-bg px-4 text-sm text-ink">
-            <option value="idea">Idea</option>
-            <option value="launch">Lancio</option>
-          </select>
-        </label>
-
-        {/* Stile visuale */}
-        <div>
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Stile dell&apos;idea</span>
-          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
-            {PROJECT_STYLES.map((s, i) => (
-              <button
-                key={s.label}
-                onClick={() => setTheme(i)}
-                className={cn(
-                  "group flex cursor-pointer flex-col gap-1.5 rounded-2xl border p-2 transition-all",
-                  theme === i ? "border-amber-400 ring-2 ring-amber-400/40" : "border-line hover:border-muted"
-                )}
-                aria-label={s.label}
-              >
-                <span className="h-10 w-full rounded-xl" style={gradientStyle({ id: `__style__${i}`, theme: i })} />
-                <span className="truncate text-center text-[10px] font-bold text-ink">{s.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Categorie */}
-        <div>
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Categorie (massimo 3)</span>
-          <div className="flex flex-wrap gap-2">
-            {ALL_CATEGORIES.map((category) => (
-              <button
-                key={category}
-                onClick={() => toggleCategory(category)}
-                className={cn(
-                  "cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition-all",
-                  categories.includes(category)
-                    ? "border-brand-500 bg-brand-500 text-white shadow-lg shadow-brand-500/25"
-                    : "border-line bg-surface text-muted hover:text-ink"
-                )}
-              >
-                {categoryLabel(category)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Ruoli */}
-        <div>
-          <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Chi stai cercando?</span>
-          <div className="flex gap-2">
-            <Input
-              value={roleInput}
-              onChange={(e) => setRoleInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addRole())}
-               placeholder='Es. "Sviluppatore frontend"'
-            />
-            <Button variant="secondary" onClick={addRole} aria-label="Aggiungi ruolo" className="shrink-0">
-              <Plus className="h-4.5 w-4.5" />
-            </Button>
-          </div>
-          {roles.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {roles.map((r) => (
-                <Badge key={r} className="gap-1.5 border border-brand-500/30 bg-brand-500/10 py-1.5 pl-3.5 pr-2 text-brand-600 dark:text-brand-400">
-                  {r}
-                  <button onClick={() => setRoles(roles.filter((x) => x !== r))} className="cursor-pointer rounded-full p-0.5 hover:bg-brand-500/20" aria-label={`Rimuovi ${r}`}>
-                    <X className="h-3.5 w-3.5" />
+        {step === 0 && (
+          <>
+            <label className="block">
+              <FieldLabel hint={`${draft.title.length}/30`}>Nome del progetto</FieldLabel>
+              <Input value={draft.title} onChange={(e) => set("title", e.target.value)} placeholder="Es. ThesisAI" maxLength={30} />
+            </label>
+            <label className="block">
+              <FieldLabel hint={`${draft.pitch.length}/140`}>Tagline breve</FieldLabel>
+              <Textarea rows={2} value={draft.pitch} onChange={(e) => set("pitch", e.target.value.slice(0, 140))} placeholder="Una frase: cosa fai e per chi" />
+            </label>
+            <div>
+              <FieldLabel hint="massimo 3">Settore</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {ALL_CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    aria-pressed={draft.categories.includes(category)}
+                    onClick={() => toggleCategory(category)}
+                    className={cn(
+                      "cursor-pointer rounded-full border px-3.5 py-2 text-sm font-semibold transition-all",
+                      draft.categories.includes(category) ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-surface text-muted hover:text-ink"
+                    )}
+                  >
+                    {categoryLabel(category)}
                   </button>
-                </Badge>
-              ))}
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <FieldLabel>Città</FieldLabel>
+                <Input value={draft.location} onChange={(e) => set("location", e.target.value)} placeholder="Es. Milano" />
+              </label>
+              <label className="block">
+                <FieldLabel hint="facoltativo">Ateneo</FieldLabel>
+                <Input value={draft.university} onChange={(e) => set("university", e.target.value)} placeholder="Es. Politecnico di Milano" />
+              </label>
+            </div>
+          </>
+        )}
 
-        {/* Vision */}
-        <div>
-          <span className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted">
-            Vision del progetto (Markdown)
-            <button onClick={() => setPreview(!preview)} className="flex cursor-pointer items-center gap-1 font-semibold normal-case tracking-normal text-brand-600 dark:text-brand-400">
-              {preview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              {preview ? "Modifica" : "Anteprima"}
-            </button>
-          </span>
-          {preview ? (
-            <div className="rounded-2xl border border-line bg-bg p-4">
-              <Markdown>{readme}</Markdown>
+        {step === 1 && (
+          <>
+            <label className="block">
+              <FieldLabel>Il problema</FieldLabel>
+              <Textarea rows={4} maxLength={2000} value={draft.problem} onChange={(e) => set("problem", e.target.value)} placeholder="Quale problema risolvi? Chi lo vive ogni giorno?" />
+            </label>
+            <label className="block">
+              <FieldLabel>La soluzione</FieldLabel>
+              <Textarea rows={4} maxLength={2000} value={draft.solution} onChange={(e) => set("solution", e.target.value)} placeholder="Come funziona la tua idea?" />
+            </label>
+            <label className="block">
+              <FieldLabel hint="facoltativo">Stato di avanzamento</FieldLabel>
+              <Textarea rows={3} maxLength={2000} value={draft.progress} onChange={(e) => set("progress", e.target.value)} placeholder="Dove siete arrivati? Cosa manca per l'MVP?" />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <FieldLabel>Fase</FieldLabel>
+                <select value={draft.stage} onChange={(e) => set("stage", e.target.value as "idea" | "launch")} className={selectClass}>
+                  <option value="idea">Idea</option>
+                  <option value="launch">Lancio</option>
+                </select>
+              </label>
+              <label className="block">
+                <FieldLabel hint="facoltativo">Link del progetto</FieldLabel>
+                <Input type="url" inputMode="url" value={draft.link} onChange={(e) => set("link", e.target.value)} placeholder="https://…" />
+              </label>
             </div>
+            <div>
+              <FieldLabel>Stile dell&apos;idea</FieldLabel>
+              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+                {PROJECT_STYLES.map((s, i) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    onClick={() => set("theme", i)}
+                    className={cn("flex cursor-pointer flex-col gap-1.5 rounded-2xl border p-2 transition-all", draft.theme === i ? "border-amber-400 ring-2 ring-amber-400/40" : "border-line hover:border-muted")}
+                    aria-label={s.label}
+                  >
+                    <span className="h-9 w-full rounded-xl" style={gradientStyle({ id: `__style__${i}`, theme: i })} />
+                    <span className="truncate text-center text-[10px] font-bold text-ink">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div>
+              <h2 className="font-display text-lg font-bold text-ink">Chi stai cercando?</h2>
+              <p className="mt-0.5 text-sm text-muted">Aggiungi almeno una posizione aperta. Potrai modificarle o chiuderle in seguito dalla pagina del progetto.</p>
+            </div>
+            {draft.roles.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {draft.roles.map((r, i) => (
+                  <RoleCard key={`${r.title}-${i}`} role={r} onDelete={() => set("roles", draft.roles.filter((_, j) => j !== i))} />
+                ))}
+              </div>
+            )}
+            {adding || draft.roles.length === 0 ? (
+              <div className="rounded-2xl border border-line bg-bg p-4">
+                <RoleForm
+                  submitLabel="Aggiungi posizione"
+                  onError={toast}
+                  onCancel={draft.roles.length > 0 ? () => setAdding(false) : undefined}
+                  onSubmit={(role) => {
+                    set("roles", [...draft.roles, role]);
+                    setAdding(false);
+                  }}
+                />
+              </div>
+            ) : (
+              <Button variant="secondary" onClick={() => setAdding(true)}><Plus className="h-4 w-4" /> Aggiungi un&apos;altra posizione</Button>
+            )}
+          </>
+        )}
+
+        <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          {step > 0 ? (
+            <Button variant="secondary" size="lg" onClick={goBack}><ArrowLeft className="h-4 w-4" /> Indietro</Button>
           ) : (
-            <Textarea rows={12} value={readme} onChange={(e) => setReadme(e.target.value)} className="font-mono text-[13px] leading-relaxed" />
+            <span />
           )}
-          <p className="mt-1.5 text-[11px] text-muted">
-            Supporta Markdown: **grassetto**, ## titoli, - elenchi, [link](url)
-          </p>
+          {step < 2 ? (
+            <Button size="lg" onClick={goNext}>Avanti <ArrowRight className="h-4 w-4" /></Button>
+          ) : (
+            <Button size="lg" onClick={publish} disabled={publishing}>{publishing ? "Pubblico…" : "🚀 Pubblica il progetto"}</Button>
+          )}
         </div>
-
-        <Button size="lg" className="mt-1 w-full" onClick={submit}>
-          🚀 Pubblica nel Batch 2026
-        </Button>
       </div>
     </div>
   );

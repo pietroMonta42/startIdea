@@ -4,29 +4,42 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUp, BriefcaseBusiness, Check, ExternalLink, FileText, MapPin, Pencil, Trash2, Users } from "lucide-react";
+import { ArrowLeft, ArrowUp, BriefcaseBusiness, Check, ExternalLink, FileText, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { Project, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
+import { Project, ProjectRole, ROLE_COLORS, ROLE_LABELS } from "@/lib/types";
+import { calculateMatchScore } from "@/lib/matching";
+import { MutualMatchModal } from "@/components/mutual-match-modal";
 import { categoryLabel } from "@/lib/data";
 import { cn, gradientStyle, normalizeExternalUrl, scrimStyle, timeAgo } from "@/lib/utils";
 import Markdown from "@/components/markdown";
-import { StarButton } from "@/components/project-card";
+import { ShareButton, StarButton } from "@/components/project-card";
 import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
+import { RoleCard, RoleForm } from "@/components/role-form";
+import { FieldLabel } from "@/components/form-bits";
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const store = useStore();
-  const { authReady, projectById, profileById, commentsFor, addComment, user, session, toast, applicationsFor, myApplication, addApplication, isAdmin, deleteProject, updateProject, isDemoProject } = store;
+  const { authReady, projectById, profileById, commentsFor, addComment, user, session, toast, applicationsFor, myApplication, addApplication, isAdmin, deleteProject, updateProject, isDemoProject, rolesFor, createRole, updateRole, setRoleOpen, deleteRole } = store;
 
   const [comment, setComment] = useState("");
   const [applyOpen, setApplyOpen] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [matchModalData, setMatchModalData] = useState<{
+    open: boolean;
+    partnerName: string;
+    partnerColor?: string;
+    partnerId: string;
+    roleTitle: string;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactConsent, setContactConsent] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [roleModal, setRoleModal] = useState<{ role: ProjectRole | null } | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<ProjectRole | null>(null);
 
   if (!authReady) return <FeedSkeleton />;
 
@@ -47,6 +60,10 @@ export default function ProjectPage() {
   const applications = applicationsFor(project.id);
   const mine = myApplication(project.id);
   const isOwner = user?.id === project.owner_id;
+  const projectRoles = rolesFor(project.id);
+  const openRoles = projectRoles.filter((r) => r.is_open);
+  const visibleRoles = isOwner ? projectRoles : openRoles;
+  const hasStructured = Boolean(project.problem || project.solution || project.progress);
 
   const submitComment = () => {
     if (!user) return toast("Accedi per commentare");
@@ -56,15 +73,23 @@ export default function ProjectPage() {
   };
 
   const submitApplication = async () => {
-    if (!role) return toast("Scegli un ruolo");
+    if (!selectedRoleId) return toast("Scegli un ruolo per cui candidarti");
     if (message.trim().length < 10) return toast("Scrivi un mini-pitch di almeno 10 caratteri");
     if (!contactEmail.trim() && !contactPhone.trim()) return toast("Inserisci un indirizzo email o un numero di telefono");
     if (contactEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) return toast("Controlla l’indirizzo email");
     if (!contactConsent) return toast("Conferma la condivisione dei recapiti con chi ha pubblicato il progetto");
-    const submitted = await addApplication(project.id, role, message.trim(), { email: contactEmail, phone: contactPhone, consent: contactConsent });
+    const roleObj = openRoles.find((r) => r.id === selectedRoleId) || openRoles.find((r) => r.title === selectedRoleId);
+    const targetTitle = roleObj ? roleObj.title : (selectedRoleId || "Ruolo");
+    const submitted = await addApplication(
+      project.id,
+      targetTitle,
+      message.trim(),
+      { email: contactEmail, phone: contactPhone, consent: contactConsent },
+      roleObj?.id
+    );
     if (!submitted) return;
     setApplyOpen(false);
-    setRole(null);
+    setSelectedRoleId(null);
     setMessage("");
     setContactEmail("");
     setContactPhone("");
@@ -110,8 +135,9 @@ export default function ProjectPage() {
 
         <div className="relative mt-6 flex flex-wrap items-center gap-3">
           <StarButton project={project} size="lg" onDark />
+          <ShareButton project={project} size="lg" onDark />
           <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white">
-            <MapPin className="h-4 w-4" /> {project.location} · {timeAgo(project.created_at)}
+            <MapPin className="h-4 w-4" /> {[project.location, project.university].filter(Boolean).join(" · ")} · {timeAgo(project.created_at)}
           </div>
           {project.link && (
             <a
@@ -152,15 +178,29 @@ export default function ProjectPage() {
       >
         <div className="flex items-center gap-2">
           <BriefcaseBusiness className="h-5 w-5 text-brand-500" />
-          <h2 className="font-display text-lg font-bold text-ink">Ruoli aperti</h2>
+          <h2 className="font-display text-lg font-bold text-ink">Posizioni aperte{openRoles.length > 0 && <span className="text-sm font-semibold text-muted"> ({openRoles.length})</span>}</h2>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {project.open_roles.map((r) => (
-            <Badge key={r} className="border border-brand-500/30 bg-brand-500/10 px-3.5 py-1.5 text-xs text-brand-600 dark:text-brand-400">
-              {r}
-            </Badge>
-          ))}
-        </div>
+        {visibleRoles.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">{isOwner ? "Nessuna posizione aperta: aggiungine una per ricevere candidature." : "Al momento non ci sono posizioni aperte."}</p>
+        ) : (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {visibleRoles.map((r) => (
+              <RoleCard
+                key={r.id}
+                role={r}
+                projectId={project.id}
+                onEdit={isOwner && !isDemoProject(project.id) ? () => setRoleModal({ role: r }) : undefined}
+                onToggle={isOwner && !isDemoProject(project.id) ? () => setRoleOpen(r.id, !r.is_open) : undefined}
+                onDelete={isOwner && !isDemoProject(project.id) ? () => setRoleToDelete(r) : undefined}
+              />
+            ))}
+          </div>
+        )}
+        {isOwner && !isDemoProject(project.id) && (
+          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setRoleModal({ role: null })}>
+            <Plus className="h-3.5 w-3.5" /> Aggiungi posizione
+          </Button>
+        )}
         <div className="mt-4">
           {isOwner ? (
             <div className="flex flex-wrap gap-2">
@@ -177,7 +217,7 @@ export default function ProjectPage() {
             <div className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
               <Check className="h-4.5 w-4.5" /> Ti sei candidato come {mine.target_role} · in attesa di risposta
             </div>
-          ) : !user ? (
+          ) : openRoles.length === 0 ? null : !user ? (
             <Link href="/profilo"><Button size="lg" className="w-full sm:w-auto">Accedi per candidarti</Button></Link>
           ) : (
             <Button
@@ -210,15 +250,72 @@ export default function ProjectPage() {
             <div className="mt-3 flex flex-col gap-3">
               {applications.map((a) => {
                 const applicant = profileById(a.applicant_id);
+                const applicantScore = applicant ? calculateMatchScore(applicant, project, openRoles.find((r) => r.title === a.target_role)) : null;
+                const isMatched = a.status === "mutual_match" || a.status === "accepted";
+                const isRejected = a.status === "rejected";
                 return (
-                  <div key={a.id} className="flex gap-3 rounded-2xl border border-line bg-surface p-4">
-                    <Avatar name={applicant?.full_name ?? "?"} size="sm" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-ink">
-                        {applicant?.full_name} <span className="font-semibold text-brand-600 dark:text-brand-400">· {a.target_role}</span>
-                      </p>
-                      <p className="mt-1 text-sm text-muted">{a.message}</p>
+                  <div key={a.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex gap-3">
+                      <Avatar name={applicant?.full_name ?? "?"} size="md" color={applicant?.profile_color} />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link href={`/persona/${a.applicant_id}`} className="text-sm font-bold text-ink hover:underline">
+                            {applicant?.full_name ?? "Candidato"}
+                          </Link>
+                          <span className="font-semibold text-brand-600 dark:text-brand-400 text-xs">· {a.target_role}</span>
+                          {applicantScore && (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px]">
+                              {applicantScore.score}% match
+                            </Badge>
+                          )}
+                          {isMatched && (
+                            <Badge className="bg-brand-500 text-white text-[11px]">Mutual Match 🔥</Badge>
+                          )}
+                          {isRejected && (
+                            <Badge className="bg-zinc-500/10 text-zinc-500 text-[11px]">Declinata</Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-muted">{a.message}</p>
+                        {a.contact_email && (
+                          <p className="mt-1 text-xs text-muted">Contatto: {a.contact_email} {a.contact_phone ? `· ${a.contact_phone}` : ""}</p>
+                        )}
+                      </div>
                     </div>
+
+                    {!isMatched && !isRejected && (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            await store.updateApplicationStatus(a.id, "mutual_match");
+                            setMatchModalData({
+                              open: true,
+                              partnerName: applicant?.full_name ?? "Nuovo compagno",
+                              partnerColor: applicant?.profile_color,
+                              partnerId: a.applicant_id,
+                              roleTitle: a.target_role,
+                            });
+                          }}
+                        >
+                          Accetta
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => store.updateApplicationStatus(a.id, "rejected")}
+                        >
+                          Rifiuta
+                        </Button>
+                      </div>
+                    )}
+
+                    {isMatched && (
+                      <Link href={`/inbox?chat=${a.applicant_id}`}>
+                        <Button size="sm" variant="secondary" className="gap-1.5">
+                          Apri Chat →
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 );
               })}
@@ -236,10 +333,25 @@ export default function ProjectPage() {
       >
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-brand-500" />
-          <h2 className="font-display text-lg font-bold text-ink">Vision</h2>
+          <h2 className="font-display text-lg font-bold text-ink">Il progetto</h2>
         </div>
-        <div className="mt-2 border-t border-line pt-2">
-          <Markdown>{project.readme_markdown}</Markdown>
+        <div className="mt-2 flex flex-col gap-5 border-t border-line pt-4">
+          {hasStructured ? (
+            [
+              { label: "Il problema", text: project.problem },
+              { label: "La soluzione", text: project.solution },
+              { label: "Stato di avanzamento", text: project.progress },
+            ].filter((x) => x.text).map((x) => (
+              <div key={x.label}>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted">{x.label}</h3>
+                <p className="mt-1.5 whitespace-pre-line text-[15px] leading-relaxed text-ink/90">{x.text}</p>
+              </div>
+            ))
+          ) : project.readme_markdown ? (
+            <Markdown>{project.readme_markdown}</Markdown>
+          ) : (
+            <p className="text-sm text-muted">Il founder non ha ancora descritto il progetto.</p>
+          )}
         </div>
       </motion.section>
 
@@ -330,20 +442,35 @@ export default function ProjectPage() {
         </p>
         <p className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted">Per quale ruolo?</p>
         <div className="flex flex-wrap gap-2">
-          {project.open_roles.map((r) => (
-            <button
-              key={r}
-              onClick={() => setRole(r)}
-              className={cn(
-                "cursor-pointer rounded-full border px-4 py-2 text-sm font-semibold transition-all",
-                role === r
-                  ? "border-brand-500 bg-brand-500 text-white shadow-lg shadow-brand-500/25"
-                  : "border-line bg-surface text-muted hover:text-ink"
-              )}
-            >
-              {r}
-            </button>
-          ))}
+          {openRoles.map((r) => {
+            const match = user ? calculateMatchScore(user, project, r) : null;
+            const isSelected = selectedRoleId === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setSelectedRoleId(r.id)}
+                className={cn(
+                  "flex cursor-pointer flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all sm:min-w-44",
+                  isSelected
+                    ? "border-brand-500 bg-brand-500/5 ring-2 ring-brand-500"
+                    : "border-line bg-surface hover:border-muted"
+                )}
+              >
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-ink">{r.title}</span>
+                  {match && (
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {match.score}% match
+                    </span>
+                  )}
+                </div>
+                {match && match.reasons.length > 0 && (
+                  <span className="text-[11px] text-muted">{match.reasons.join(" · ")}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
         <p className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted">Il tuo mini-pitch</p>
         <Textarea
@@ -364,8 +491,45 @@ export default function ProjectPage() {
         </Button>
       </Modal>
 
+      {/* Role create/edit modal */}
+      <Modal open={roleModal !== null} onClose={() => setRoleModal(null)} title={roleModal?.role ? "Modifica posizione" : "Nuova posizione"}>
+        {roleModal && (
+          <RoleForm
+            key={roleModal.role?.id ?? "new"}
+            initial={roleModal.role ?? undefined}
+            submitLabel={roleModal.role ? "Salva posizione" : "Aggiungi posizione"}
+            onError={toast}
+            onCancel={() => setRoleModal(null)}
+            onSubmit={async (input) => {
+              const ok = roleModal.role ? await updateRole(roleModal.role.id, input) : await createRole(project.id, input);
+              if (ok) setRoleModal(null);
+            }}
+          />
+        )}
+      </Modal>
+      <Modal open={roleToDelete !== null} onClose={() => setRoleToDelete(null)} title="Eliminare la posizione?">
+        <p className="text-sm text-muted">Per tenerla ma non ricevere più candidature puoi anche solo chiuderla. Le candidature già inviate restano.</p>
+        <div className="mt-4 flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => setRoleToDelete(null)}>Annulla</Button>
+          <Button variant="dark" className="flex-1 bg-red-500 hover:bg-red-600" onClick={async () => { if (roleToDelete) await deleteRole(roleToDelete.id); setRoleToDelete(null); }}>Elimina</Button>
+        </div>
+      </Modal>
+
       {/* Edit modal */}
       <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={project} onSave={updateProject} />
+
+      {/* Mutual Match Modal */}
+      {matchModalData && (
+        <MutualMatchModal
+          open={matchModalData.open}
+          onClose={() => setMatchModalData(null)}
+          projectName={project.title}
+          partnerName={matchModalData.partnerName}
+          partnerColor={matchModalData.partnerColor}
+          partnerId={matchModalData.partnerId}
+          roleTitle={matchModalData.roleTitle}
+        />
+      )}
 
       {/* Delete confirm */}
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Elimina progetto?">
@@ -388,26 +552,35 @@ function EditProjectModal({
   open: boolean;
   onClose: () => void;
   project: Project;
-  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "open_roles" | "tags" | "location" | "link" | "stage">>) => Promise<void>;
+  onSave: (id: string, patch: Partial<Pick<Project, "title" | "short_pitch" | "readme_markdown" | "problem" | "solution" | "progress" | "university" | "tags" | "location" | "link" | "stage">>) => Promise<void>;
 }) {
   const [title, setTitle] = useState(project.title);
   const [pitch, setPitch] = useState(project.short_pitch);
   const [location, setLocation] = useState(project.location);
+  const [university, setUniversity] = useState(project.university ?? "");
   const [link, setLink] = useState(project.link ?? "");
   const [stage, setStage] = useState<"idea" | "launch">(project.stage ?? "idea");
-  const [readme, setReadme] = useState(project.readme_markdown);
-  const [roles, setRoles] = useState(project.open_roles.join(", "));
+  const [problem, setProblem] = useState(project.problem ?? "");
+  const [solution, setSolution] = useState(project.solution ?? "");
+  const [progress, setProgress] = useState(project.progress ?? "");
+  const [legacy, setLegacy] = useState(project.readme_markdown);
   const [tags, setTags] = useState(project.tags.join(", "));
+
+  // Progetti pubblicati col vecchio editor Markdown: mostra il testo libero finché non vengono compilati i nuovi campi.
+  const isLegacy = Boolean(project.readme_markdown) && !project.problem && !project.solution && !project.progress;
 
   useEffect(() => {
     if (open) {
       setTitle(project.title);
       setPitch(project.short_pitch);
       setLocation(project.location);
+      setUniversity(project.university ?? "");
       setLink(project.link ?? "");
       setStage(project.stage ?? "idea");
-      setReadme(project.readme_markdown);
-      setRoles(project.open_roles.join(", "));
+      setProblem(project.problem ?? "");
+      setSolution(project.solution ?? "");
+      setProgress(project.progress ?? "");
+      setLegacy(project.readme_markdown);
       setTags(project.tags.join(", "));
     }
   }, [open, project]);
@@ -415,17 +588,40 @@ function EditProjectModal({
   return (
     <Modal open={open} onClose={onClose} title="Modifica progetto">
       <div className="flex flex-col gap-3">
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" />
-        <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Pitch (max 140)" />
-        <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo" maxLength={30} />
+        <label className="block">
+          <FieldLabel hint={`${pitch.length}/140`}>Tagline</FieldLabel>
+          <Textarea rows={2} value={pitch} onChange={(e) => setPitch(e.target.value.slice(0, 140))} placeholder="Tagline (max 140)" />
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Città" />
+          <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="Ateneo (facoltativo)" />
+        </div>
         <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link del progetto (facoltativo)" type="url" />
         <select value={stage} onChange={(e) => setStage(e.target.value as "idea" | "launch")} className="h-11 w-full rounded-2xl border border-line bg-bg px-4 text-sm text-ink" aria-label="Fase del progetto">
           <option value="idea">Fase: Idea</option>
           <option value="launch">Fase: Lancio</option>
         </select>
         <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Categorie (separate da virgola)" />
-        <Input value={roles} onChange={(e) => setRoles(e.target.value)} placeholder="Ruoli aperti (separati da virgola)" />
-        <Textarea rows={6} value={readme} onChange={(e) => setReadme(e.target.value)} placeholder="Vision (Markdown)" className="font-mono text-[13px]" />
+        {isLegacy && (
+          <label className="block">
+            <FieldLabel>Descrizione attuale</FieldLabel>
+            <Textarea rows={5} value={legacy} onChange={(e) => setLegacy(e.target.value)} />
+          </label>
+        )}
+        <label className="block">
+          <FieldLabel>Il problema</FieldLabel>
+          <Textarea rows={3} maxLength={2000} value={problem} onChange={(e) => setProblem(e.target.value)} placeholder="Quale problema risolvi e per chi?" />
+        </label>
+        <label className="block">
+          <FieldLabel>La soluzione</FieldLabel>
+          <Textarea rows={3} maxLength={2000} value={solution} onChange={(e) => setSolution(e.target.value)} placeholder="Come lo risolvi?" />
+        </label>
+        <label className="block">
+          <FieldLabel>Stato di avanzamento</FieldLabel>
+          <Textarea rows={3} maxLength={2000} value={progress} onChange={(e) => setProgress(e.target.value)} placeholder="A che punto siete?" />
+        </label>
+        <p className="text-xs text-muted">Le posizioni aperte si gestiscono dalla sezione &quot;Posizioni aperte&quot; della pagina.</p>
         <Button
           size="lg"
           onClick={async () => {
@@ -433,11 +629,14 @@ function EditProjectModal({
               title: title.trim() || project.title,
               short_pitch: pitch.trim(),
               location: location.trim(),
+              university: university.trim() || null,
               link: link.trim() ? normalizeExternalUrl(link) : null,
               stage,
               tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-              open_roles: roles.split(",").map((r) => r.trim()).filter(Boolean),
-              readme_markdown: readme,
+              problem: problem.trim(),
+              solution: solution.trim(),
+              progress: progress.trim(),
+              ...(isLegacy ? { readme_markdown: legacy } : {}),
             });
             onClose();
           }}
