@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
+  CheckCircle2,
   FolderKanban,
   Handshake,
   KeyRound,
@@ -21,13 +22,14 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Availability, AVAILABILITY_LABELS, AVAILABILITY_ORDER, LOOKING_FOR_LABELS, LookingFor, Profile, PROFILE_COLORS, ROLE_COLORS, ROLE_LABELS, RoleBadge } from "@/lib/types";
+import { validateAuthCredentials } from "@/lib/auth-validation";
 import { cn, gradientStyle, initials, isValidHttpUrl, normalizeExternalUrl, timeAgo } from "@/lib/utils";
 import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
 import { Logo } from "@/components/app-shell";
 import { AvailabilityBadge, LookingForBadges } from "@/components/profile-badges";
 import { ChipInput, FieldLabel, PillSelect, selectClass } from "@/components/form-bits";
 
-function LoginScreen() {
+function LoginScreen({ emailConfirmed = false }: { emailConfirmed?: boolean }) {
   const { signInOtp, signInWithEmail, signUpWithEmail, toast } = useStore();
   const [mode, setMode] = useState<"magic" | "password">("password");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -38,6 +40,8 @@ function LoginScreen() {
   const [university, setUniversity] = useState("");
   const [role, setRole] = useState<RoleBadge>("tech_dev");
   const [customRole, setCustomRole] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   const sendOtp = () => {
     if (!email.includes("@")) return toast("Inserisci una mail valida");
@@ -46,18 +50,70 @@ function LoginScreen() {
     signInOtp(email.trim(), { full_name: name.trim(), role, role_custom: customRole.trim(), university: university.trim() });
   };
 
-  const submitPassword = () => {
-    if (!email.includes("@")) return toast("Inserisci una mail valida");
-    if (password.length < 6) return toast("La password deve avere almeno 6 caratteri");
+  const submitPassword = async () => {
+    if (submitting) return;
+    const credError = validateAuthCredentials({ email, password, passwordConfirmation });
+    if (credError) return toast(credError);
+
     if (isSignUp) {
       if (name.trim().length < 3) return toast("Inserisci il tuo nome");
-      if (password !== passwordConfirmation) return toast("Le password non coincidono");
       if (role === "other" && !customRole.trim()) return toast("Specifica il tuo ruolo");
-      signUpWithEmail(email.trim(), password, { full_name: name.trim(), role, role_custom: customRole.trim(), university: university.trim() });
+      setSubmitting(true);
+      const res = await signUpWithEmail(email.trim(), password, passwordConfirmation, {
+        full_name: name.trim(),
+        role,
+        role_custom: customRole.trim(),
+        university: university.trim(),
+      });
+      setSubmitting(false);
+      if (res.ok) {
+        setRegisteredEmail(email.trim());
+        setPassword("");
+        setPasswordConfirmation("");
+      }
     } else {
-      signInWithEmail(email.trim(), password);
+      setSubmitting(true);
+      await signInWithEmail(email.trim(), password, passwordConfirmation);
+      setSubmitting(false);
     }
   };
+
+  if (registeredEmail) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col gap-6 pt-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center gap-4 rounded-3xl border border-line bg-surface p-7 text-center shadow-sm"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-500/10 text-brand-500">
+            <Mail className="h-8 w-8" />
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Controlla la tua email</h1>
+          <p className="text-sm leading-relaxed text-muted">
+            Abbiamo inviato un link di conferma a <strong className="text-ink">{registeredEmail}</strong>.
+            Apri il link per attivare il tuo account e accedere.
+          </p>
+          <p className="rounded-2xl border border-line bg-bg px-4 py-3 text-xs leading-relaxed text-muted">
+            Non vedi l&apos;email? Controlla anche nelle cartelle <strong className="text-ink">Spam</strong> o <strong className="text-ink">Promozioni</strong>.
+          </p>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="mt-2 w-full"
+            onClick={() => {
+              setRegisteredEmail(null);
+              setIsSignUp(false);
+              setPassword("");
+              setPasswordConfirmation("");
+            }}
+          >
+            Torna ad Accedi
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,6 +132,13 @@ function LoginScreen() {
           </p>
         </div>
       </motion.div>
+
+      {emailConfirmed && (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+          <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
+          Email confermata! Inserisci email e password per accedere.
+        </div>
+      )}
 
       {/* Mode toggle */}
       <div className="flex gap-1.5 rounded-full border border-line bg-surface p-1.5">
@@ -117,11 +180,10 @@ function LoginScreen() {
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" />
 
           {mode === "password" && (
-            <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 6 caratteri)" type="password" />
-          )}
-
-          {isSignUp && mode === "password" && (
-            <Input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" type="password" />
+            <>
+              <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 6 caratteri)" type="password" />
+              <Input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" type="password" />
+            </>
           )}
 
           {isSignUp && mode === "password" && (
@@ -156,8 +218,8 @@ function LoginScreen() {
           )}
 
           {mode === "password" ? (
-            <Button size="lg" className="mt-1 w-full" onClick={submitPassword}>
-              <LogIn className="h-4 w-4" /> {isSignUp ? "Crea account" : "Accedi"}
+            <Button size="lg" className="mt-1 w-full" onClick={submitPassword} disabled={submitting}>
+              <LogIn className="h-4 w-4" /> {submitting ? "Attendere…" : isSignUp ? "Crea account" : "Accedi"}
             </Button>
           ) : (
             <Button size="lg" className="mt-1 w-full" onClick={sendOtp}>
@@ -167,7 +229,11 @@ function LoginScreen() {
 
           {mode === "password" && (
             <button
-              onClick={() => setIsSignUp((s) => !s)}
+              onClick={() => {
+                setIsSignUp((s) => !s);
+                setPassword("");
+                setPasswordConfirmation("");
+              }}
               className="cursor-pointer text-center text-sm font-semibold text-brand-600 transition-colors hover:text-brand-500 dark:text-brand-400"
             >
               {isSignUp ? "Hai già un account? Accedi →" : "Nuovo qui? Crea un account →"}
@@ -627,15 +693,23 @@ function EmptyState({ icon, title, text, cta }: { icon: React.ReactNode; title: 
 
 export default function ProfiloPage() {
   const { user, authReady, toast } = useStore();
+  const [emailConfirmed] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("confirmed") === "1"
+  );
 
   useEffect(() => {
-    const err = new URLSearchParams(window.location.search).get("auth_error");
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("auth_error");
+    const confirmed = params.get("confirmed") === "1";
     if (err) {
       toast(`Login non riuscito: ${err}. Se il link era nella mail, apri l'email nello stesso browser della registrazione — oppure accedi con email e password.`);
+      window.history.replaceState({}, "", "/profilo");
+    } else if (confirmed) {
+      toast("Email confermata! Ora puoi accedere.");
       window.history.replaceState({}, "", "/profilo");
     }
   }, [toast]);
 
   if (!authReady) return <FeedSkeleton />;
-  return user ? <ProfileView /> : <LoginScreen />;
+  return user ? <ProfileView /> : <LoginScreen emailConfirmed={emailConfirmed} />;
 }

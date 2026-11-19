@@ -34,8 +34,8 @@ interface Store {
   // auth
   signInOAuth: (provider: "github" | "google") => Promise<void>;
   signInOtp: (email: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<void>;
+  signInWithEmail: (email: string, password: string, passwordConfirmation: string) => Promise<{ ok: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string, passwordConfirmation: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
   setAvailability: (a: Availability) => void;
@@ -379,22 +379,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     else toast("Magic link inviato! Controlla la mail 📩");
   }, [toast]);
 
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) toast(error.message);
-  }, [toast]);
-
-  const signUpWithEmail = useCallback(async (email: string, password: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/profilo`,
-        data: { full_name: meta.full_name, role_badge: meta.role, role_custom: meta.role_custom, university: meta.university },
-      },
+  const signInWithEmail = useCallback(async (email: string, password: string, passwordConfirmation: string) => {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, passwordConfirmation }),
     });
-    if (error) toast(error.message);
-    else toast("Controlla la mail per confermare l'account ✉️");
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = (body.error as string) || "Errore durante l'accesso";
+      toast(msg);
+      return { ok: false, error: msg };
+    }
+    // Sincronizza il client browser con i cookie impostati dal server
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      setSession(data.session);
+      await loadUserData(data.session.user);
+    }
+    return { ok: true };
+  }, [loadUserData, toast]);
+
+  const signUpWithEmail = useCallback(async (email: string, password: string, passwordConfirmation: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => {
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        passwordConfirmation,
+        full_name: meta.full_name,
+        role: meta.role,
+        role_custom: meta.role_custom,
+        university: meta.university,
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = (body.error as string) || "Errore durante la registrazione";
+      toast(msg);
+      return { ok: false, error: msg };
+    }
+    return { ok: true };
   }, [toast]);
 
   const signOut = useCallback(async () => {
