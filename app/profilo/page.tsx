@@ -52,7 +52,12 @@ function LoginScreen({ emailConfirmed = false }: { emailConfirmed?: boolean }) {
 
   const submitPassword = async () => {
     if (submitting) return;
-    const credError = validateAuthCredentials({ email, password, passwordConfirmation });
+    const credError = validateAuthCredentials({
+      email,
+      password,
+      passwordConfirmation,
+      requireConfirmation: isSignUp,
+    });
     if (credError) return toast(credError);
 
     if (isSignUp) {
@@ -73,7 +78,7 @@ function LoginScreen({ emailConfirmed = false }: { emailConfirmed?: boolean }) {
       }
     } else {
       setSubmitting(true);
-      await signInWithEmail(email.trim(), password, passwordConfirmation);
+      await signInWithEmail(email.trim(), password);
       setSubmitting(false);
     }
   };
@@ -180,10 +185,11 @@ function LoginScreen({ emailConfirmed = false }: { emailConfirmed?: boolean }) {
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" />
 
           {mode === "password" && (
-            <>
-              <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 6 caratteri)" type="password" />
-              <Input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" type="password" />
-            </>
+            <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 6 caratteri)" type="password" />
+          )}
+
+          {isSignUp && mode === "password" && (
+            <Input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" type="password" />
           )}
 
           {isSignUp && mode === "password" && (

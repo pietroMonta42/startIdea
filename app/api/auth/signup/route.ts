@@ -22,7 +22,12 @@ export async function POST(request: NextRequest) {
   const roleCustom = typeof body.role_custom === "string" ? body.role_custom.trim() : "";
   const university = typeof body.university === "string" ? body.university.trim() : "";
 
-  const credError = validateAuthCredentials({ email, password, passwordConfirmation });
+  const credError = validateAuthCredentials({
+    email,
+    password,
+    passwordConfirmation,
+    requireConfirmation: true,
+  });
   if (credError) {
     return NextResponse.json({ error: credError }, { status: 400 });
   }

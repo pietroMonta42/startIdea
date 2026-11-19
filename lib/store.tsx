@@ -34,7 +34,7 @@ interface Store {
   // auth
   signInOAuth: (provider: "github" | "google") => Promise<void>;
   signInOtp: (email: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<void>;
-  signInWithEmail: (email: string, password: string, passwordConfirmation: string) => Promise<{ ok: boolean; error?: string }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUpWithEmail: (email: string, password: string, passwordConfirmation: string, meta: { full_name: string; role: RoleBadge; university: string; role_custom?: string }) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => Promise<void>;
@@ -379,11 +379,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     else toast("Magic link inviato! Controlla la mail 📩");
   }, [toast]);
 
-  const signInWithEmail = useCallback(async (email: string, password: string, passwordConfirmation: string) => {
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, passwordConfirmation }),
+      body: JSON.stringify({ email, password }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {

@@ -12,9 +12,8 @@ export async function POST(request: NextRequest) {
 
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  const passwordConfirmation = typeof body.passwordConfirmation === "string" ? body.passwordConfirmation : "";
 
-  const validationError = validateAuthCredentials({ email, password, passwordConfirmation });
+  const validationError = validateAuthCredentials({ email, password });
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
