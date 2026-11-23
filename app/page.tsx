@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Compass, Flame, GitBranch, Lightbulb, MessageCircle, Sparkles, Star, TrendingUp, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn, gradientStyle, scrimStyle, timeAgo } from "@/lib/utils";
-import { Logo } from "@/components/app-shell";
+import { Logo, ThemeToggle } from "@/components/app-shell";
 
 const STEPS = [
   {
@@ -33,7 +33,7 @@ const VALUES = [
 ];
 
 export default function HomePage() {
-  const { projects, starCount, commentsFor, profiles } = useStore();
+  const { projects, starCount, commentsFor, profiles, user } = useStore();
 
   const stats = useMemo(() => {
     const totalStars = projects.reduce((acc, p) => acc + starCount(p), 0);
@@ -48,6 +48,33 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-10 pt-2">
+      {/* Top bar pubblica: cambio tema + Accedi / Registrati */}
+      <header className="flex items-center justify-between border-b border-line pb-4">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Logo size={32} />
+          <span className="font-display text-lg font-bold tracking-tight text-ink">SparkLab</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {!user && (
+            <>
+              <Link
+                href="/profilo"
+                className="flex h-10 items-center rounded-full border border-line bg-surface px-4 text-sm font-semibold text-ink transition-colors hover:bg-bg"
+              >
+                Accedi
+              </Link>
+              <Link
+                href="/profilo?signup=1"
+                className="flex h-10 items-center rounded-full bg-brand-500 px-4 text-sm font-bold text-white shadow-sm shadow-brand-500/25 transition-colors hover:bg-brand-600"
+              >
+                Registrati
+              </Link>
+            </>
+          )}
+        </div>
+      </header>
+
       {/* Hero */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-5 py-6 text-center">
         <motion.div

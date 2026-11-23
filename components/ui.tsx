@@ -2,7 +2,7 @@
 
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { Eye, EyeOff, X } from "lucide-react";
 import { cn, gradientStyle, initials } from "@/lib/utils";
 
 /* ---------- Button ---------- */
@@ -147,6 +147,28 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
         props.className
       )}
     />
+  );
+}
+
+/** Input password con toggle visibilità (occhio). */
+export function PasswordInput(props: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [visible, setVisible] = React.useState(false);
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        type={visible ? "text" : "password"}
+        className={cn("pr-11", props.className)}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-line/60 hover:text-ink"
+        aria-label={visible ? "Nascondi password" : "Mostra password"}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
 

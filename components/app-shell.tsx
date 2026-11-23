@@ -224,6 +224,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <SwRegister />
       {showNavigation && <SideNav />}
       {showNavigation && <MobileHeader />}
+      {!showNavigation && pathname !== "/" && pathname !== "/esplora" && (
+        <div className="mx-auto flex w-full max-w-2xl justify-end px-4 pt-4">
+          <ThemeToggle />
+        </div>
+      )}
       <main className={cn(
         "mx-auto w-full max-w-2xl px-4 pt-5",
         showNavigation ? "pb-28 lg:max-w-3xl lg:pl-72 lg:pr-8 lg:pt-8 lg:pb-16 xl:max-w-4xl" : "pb-10"

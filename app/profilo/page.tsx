@@ -24,7 +24,7 @@ import { useStore } from "@/lib/store";
 import { Availability, AVAILABILITY_LABELS, AVAILABILITY_ORDER, LOOKING_FOR_LABELS, LookingFor, Profile, PROFILE_COLORS, ROLE_COLORS, ROLE_LABELS, RoleBadge } from "@/lib/types";
 import { validateAuthCredentials } from "@/lib/auth-validation";
 import { cn, gradientStyle, initials, isValidHttpUrl, normalizeExternalUrl, timeAgo } from "@/lib/utils";
-import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, Textarea } from "@/components/ui";
+import { Avatar, Badge, Button, FeedSkeleton, Input, Modal, PasswordInput, Textarea } from "@/components/ui";
 import { Logo } from "@/components/app-shell";
 import { AvailabilityBadge, LookingForBadges } from "@/components/profile-badges";
 import { ChipInput, FieldLabel, PillSelect, selectClass } from "@/components/form-bits";
@@ -32,7 +32,9 @@ import { ChipInput, FieldLabel, PillSelect, selectClass } from "@/components/for
 function LoginScreen({ emailConfirmed = false }: { emailConfirmed?: boolean }) {
   const { signInOtp, signInWithEmail, signUpWithEmail, toast } = useStore();
   const [mode, setMode] = useState<"magic" | "password">("password");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
@@ -185,11 +187,11 @@ function LoginScreen({ emailConfirmed = false }: { emailConfirmed?: boolean }) {
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" />
 
           {mode === "password" && (
-            <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 6 caratteri)" type="password" />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 6 caratteri)" />
           )}
 
           {isSignUp && mode === "password" && (
-            <Input value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" type="password" />
+            <PasswordInput value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)} placeholder="Conferma password" />
           )}
 
           {isSignUp && mode === "password" && (

@@ -12,7 +12,7 @@ import { ROLE_LABELS } from "@/lib/types";
 import ProjectCard from "@/components/project-card";
 import ProfileCard from "@/components/profile-card";
 import { FeedSkeleton } from "@/components/ui";
-import { Logo } from "@/components/app-shell";
+import { Logo, ThemeToggle } from "@/components/app-shell";
 
 type Sort = "top" | "comments" | "recent";
 type Tab = "projects" | "people";
@@ -107,7 +107,10 @@ function EsploraContent() {
           <Logo size={32} />
           <span className="font-display text-lg font-bold tracking-tight text-ink">SparkLab</span>
         </Link>
-        {!user && <Link href="/profilo" className="text-sm font-semibold text-brand-600 dark:text-brand-400">Accedi</Link>}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {!user && <Link href="/profilo" className="text-sm font-semibold text-brand-600 dark:text-brand-400">Accedi</Link>}
+        </div>
       </header>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="pt-1">
